@@ -3,18 +3,22 @@ package com.mrobbie.majelismengaji;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -22,6 +26,7 @@ public class MainActivity extends Activity {
     private static final String FALLBACK_URL = "file:///android_asset/bootstrap/index.html";
 
     private WebView webView;
+    private FrameLayout root;
     private GestureDetector gestureDetector;
     private SyncManager syncManager;
 
@@ -31,8 +36,35 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         syncManager = new SyncManager(this);
+
+        root = new FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(246, 242, 232));
+
         webView = new WebView(this);
-        setContentView(webView);
+        FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        root.addView(webView, webParams);
+        setContentView(root);
+
+        // Android 15+ enforces edge-to-edge for newer target SDKs.
+        // Keep the WebView itself inside the status/navigation safe areas so
+        // the Majelis header and bottom navigation never sit behind system UI.
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int left = insets.getSystemWindowInsetLeft();
+            int top = insets.getSystemWindowInsetTop();
+            int right = insets.getSystemWindowInsetRight();
+            int bottom = insets.getSystemWindowInsetBottom();
+
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) webView.getLayoutParams();
+            if (lp.leftMargin != left || lp.topMargin != top || lp.rightMargin != right || lp.bottomMargin != bottom) {
+                lp.setMargins(left, top, right, bottom);
+                webView.setLayoutParams(lp);
+            }
+            return insets;
+        });
+        root.requestApplyInsets();
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -44,7 +76,7 @@ public class MainActivity extends Activity {
         s.setLoadsImagesAutomatically(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.1");
+        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.1.1");
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
@@ -70,6 +102,12 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, request, error);
                 if (request.isForMainFrame() && !isOnline()) loadOffline();
             }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                injectPhoneLayoutFix(view);
+            }
         });
 
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
@@ -84,8 +122,8 @@ public class MainActivity extends Activity {
                 if (Math.abs(dx) < DISTANCE || Math.abs(dx) < Math.abs(dy) * 1.2f || Math.abs(velocityX) < VELOCITY) {
                     return false;
                 }
-                // Swipe inside Yasin/Tahlil/Simtud and Quran is handled by the Majelis Ngaji web app.
-                // This fallback only returns to the previous browser view when swiping right.
+                // Reading-page swipe is handled by the Majelis web app.
+                // This fallback only returns to browser history on a right swipe.
                 if (dx > 0 && webView.canGoBack()) {
                     webView.goBack();
                     return true;
@@ -104,6 +142,22 @@ public class MainActivity extends Activity {
         if (isOnline()) startBackgroundSync();
     }
 
+    private void injectPhoneLayoutFix(WebView view) {
+        String js =
+                "(function(){" +
+                "var id='mn-apk-safe-css';" +
+                "var old=document.getElementById(id);if(old)old.remove();" +
+                "var s=document.createElement('style');s.id=id;" +
+                "s.textContent='" +
+                ".mn-shell{padding-bottom:190px!important;}" +
+                ".mn-bottom{bottom:14px!important;}" +
+                "@media(max-width:700px){.mn-shell{padding-bottom:200px!important;}.mn-bottom{bottom:12px!important;}}" +
+                "';" +
+                "document.head.appendChild(s);" +
+                "})();";
+        view.evaluateJavascript(js, null);
+    }
+
     private void startBackgroundSync() {
         syncManager.startFullSync(new SyncManager.Listener() {
             private boolean coreNotified = false;
@@ -118,7 +172,7 @@ public class MainActivity extends Activity {
 
             @Override
             public void onProgress(String message) {
-                // Keep the reading screen quiet; synchronization continues in the background.
+                // Synchronization stays quiet while the user reads.
             }
 
             @Override

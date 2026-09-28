@@ -3,7 +3,9 @@ name: Export Quran Dataset
 on:
   push:
     paths:
-      - "tmp/quran_id_legacy.json"
+      - "tmp/quran_ar.json"
+      - "tmp/quran_id_safe.json"
+      - "tmp/chapters_id.json"
       - ".github/workflows/export-quran-data.yml"
   workflow_dispatch:
 
@@ -15,9 +17,11 @@ jobs:
       - name: Package dataset
         run: |
           mkdir -p export
-          cp tmp/quran_id_legacy.json export/quran_id.json
+          cp tmp/quran_ar.json export/quran_ar.json
+          cp tmp/quran_id_safe.json export/quran_id.json
+          cp tmp/chapters_id.json export/chapters_id.json
       - uses: actions/upload-artifact@v4
         with:
           name: quran-offline-data
-          path: export/quran_id.json
+          path: export/
           compression-level: 9

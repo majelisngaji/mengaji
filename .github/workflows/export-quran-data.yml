@@ -1,0 +1,23 @@
+name: Export Quran Dataset
+
+on:
+  push:
+    paths:
+      - "tmp/quran_id_legacy.json"
+      - ".github/workflows/export-quran-data.yml"
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package dataset
+        run: |
+          mkdir -p export
+          cp tmp/quran_id_legacy.json export/quran_id.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quran-offline-data
+          path: export/quran_id.json
+          compression-level: 9

@@ -420,7 +420,7 @@ public class QiblaActivity extends Activity implements SensorEventListener, Loca
                 canvas.drawLine(x2, y2, x1, y1, paint);
             }
             textPaint.setTextSize(dp(18));
-            textPaint.setTextColor(Color.rgb(14, 77, 55));
+            textPaint.setColor(Color.rgb(14, 77, 55));
             canvas.drawText("U", cx, cy - r + dp(28), textPaint);
             canvas.drawText("T", cx + r - dp(26), cy + dp(7), textPaint);
             canvas.drawText("S", cx, cy + r - dp(14), textPaint);

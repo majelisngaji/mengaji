@@ -76,7 +76,9 @@ public class MainActivity extends Activity {
         s.setLoadsImagesAutomatically(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.2.0");\n\n        webView.addJavascriptInterface(new NativeBridge(), "MajelisNative");
+        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.2.0");
+
+        webView.addJavascriptInterface(new NativeBridge(), "MajelisNative");
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {

@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
         s.setLoadsImagesAutomatically(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.1.1");
+        s.setUserAgentString(s.getUserAgentString() + " MajelisMengajiAndroid/1.2.0");\n\n        webView.addJavascriptInterface(new NativeBridge(), "MajelisNative");
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
@@ -140,6 +140,29 @@ public class MainActivity extends Activity {
         }
 
         if (isOnline()) startBackgroundSync();
+    }
+
+    private final class NativeBridge {
+        @JavascriptInterface
+        public void openQibla() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, QiblaActivity.class)));
+        }
+    }
+
+    private void injectNativeQiblaHook(WebView view) {
+        String js =
+                "(function(){" +
+                "if(window.__mnNativeQiblaHook)return;window.__mnNativeQiblaHook=true;" +
+                "document.addEventListener('click',function(ev){" +
+                "var t=ev.target;var b=(t&&t.closest)?t.closest('[data-route=\\\"qibla\\\"]'):null;" +
+                "if(!b)return;" +
+                "if(window.MajelisNative&&typeof window.MajelisNative.openQibla==='function'){" +
+                "ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();" +
+                "window.MajelisNative.openQibla();return false;" +
+                "}" +
+                "},true);" +
+                "})();";
+        view.evaluateJavascript(js, null);
     }
 
     private void injectPhoneLayoutFix(WebView view) {

@@ -62,17 +62,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.0.apk
-          gh release delete offline-v2.0.0 -y --cleanup-tag || true
-          gh release create offline-v2.0.0 Majelis_Mengaji_OFFLINE_v2.0.0.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.1.apk
+          gh release delete offline-v2.0.1 -y --cleanup-tag || true
+          gh release create offline-v2.0.1 Majelis_Mengaji_OFFLINE_v2.0.1.apk \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.0.0" \
+            --title "Majelis Mengaji OFFLINE v2.0.1" \
             --notes "APK offline penuh dengan tampilan Majelis Mengaji dipulihkan. Quran 114 surah, BaAlwi, Al-Khulasah, Maulid, Yasin, Tahlil, Simtud Duror dan jadwal sholat Palembang bekerja lokal. Tanpa sinkronisasi, tanpa permission internet, tanpa kompas kiblat."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.0.0
+          name: Majelis-Mengaji-OFFLINE-v2.0.1
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0

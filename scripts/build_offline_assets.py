@@ -140,6 +140,51 @@ def copy_unique(src,dest,used):
     used[d]=rel
     return rel
 
+def _looks_code_title(s):
+    s=(s or "").strip()
+    if not s: return True
+    if re.fullmatch(r"\d{1,4}(_(in|en|ar|id))?", s.lower()): return True
+    if re.fullmatch(r"[a-z]{0,3}\d{2,4}[a-z_\-]*", s.lower()): return True
+    return False
+
+def _clean_title_line(s):
+    s=re.sub(r"\s+"," ",str(s or "")).strip(" ._-|")
+    if len(s)<4 or len(s)>120: return ""
+    if "http://" in s.lower() or "https://" in s.lower() or "www." in s.lower(): return ""
+    if re.fullmatch(r"[\d\W_]+",s): return ""
+    return s
+
+def pdf_title(path, fallback):
+    stem=slug(fallback,120)
+    try:
+        rd=PdfReader(str(path))
+        meta=rd.metadata
+        if meta:
+            mt=_clean_title_line(getattr(meta,"title","") or "")
+            if mt and not _looks_code_title(mt):
+                return mt
+        text=""
+        for pg in rd.pages[:2]:
+            try:
+                text += "\n" + (pg.extract_text() or "")
+            except Exception:
+                pass
+        lines=[_clean_title_line(x) for x in text.splitlines()]
+        lines=[x for x in lines if x]
+        preferred=[]
+        for x in lines[:40]:
+            low=x.lower()
+            if any(k in low for k in ["maulid","ratib","yasin","tahlil","burdah","barzan","simt","haddad","attas","hizb","wirid","wird","dua","doa","sholawat","shalawat","safinat","fiqh","tauhid","aqidah","sirah","hadith","hadis","quran","قرآن","مولد","راتب","دعاء","ورد","حزب","بردة"]):
+                preferred.append(x)
+        if preferred:
+            return preferred[0]
+        for x in lines[:20]:
+            if not _looks_code_title(x):
+                return x
+    except Exception:
+        pass
+    return "Kitab " + stem if _looks_code_title(stem) else stem
+
 def collect(name, root):
     base=ASSETS/"library"/name
     usedp={}; useda={}
@@ -150,7 +195,12 @@ def collect(name, root):
         ext=p.suffix.lower()
         if ext==".pdf":
             rel=copy_unique(p,base/"pdf",usedp)
-            pdfs.append({"title":slug(p.stem,120),"path":"library/%s/pdf/%s"%(name,rel),"source":name,"type":"pdf","sourcePath":str(p.relative_to(root))[:300]})
+            title=pdf_title(p,p.stem)
+            lang=""
+            low=p.stem.lower()
+            if low.endswith("_in") or low.endswith("_id"): lang="Indonesia"
+            elif low.endswith("_en"): lang="English"
+            pdfs.append({"title":title,"path":"library/%s/pdf/%s"%(name,rel),"source":name,"type":"pdf","sourcePath":str(p.relative_to(root))[:300],"lang":lang})
         elif ext in AUDIO_EXT:
             rel=copy_unique(p,base/"audio",useda)
             audios.append({"title":slug(p.stem,120),"path":"library/%s/audio/%s"%(name,rel),"source":name,"type":"audio","sourcePath":str(p.relative_to(root))[:300]})
@@ -263,7 +313,7 @@ def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
-    catalog={"version":"1.9.4","offline":True,"sources":{}}
+    catalog={"version":"2.0.0","offline":True,"sources":{}}
     for name,cfg in SOURCES.items():
         arc=WORK/(name+".zip")
         download(name,cfg,arc)

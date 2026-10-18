@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 from urllib.parse import unquote
 import requests
+from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "app" / "src" / "main" / "assets"
@@ -186,32 +187,75 @@ def vendor():
         else: raise RuntimeError("vendor %s failed: %s"%(rel,last))
 
 def add_rawindroid_aliases(catalog):
-    # Rawindroid's six Maulid titles overlap with the embedded BaAlwi/Al-Khulasah PDFs.
-    # Reuse the same local PDF bytes instead of duplicating them.
+    # Rawindroid's six Maulid titles overlap with the embedded BaAlwi/Al-Khulasah library.
+    # Search filename/path first, then PDF metadata + first pages, and reuse the same local bytes.
     pool = catalog["sources"]["baalwi"]["pdfs"] + catalog["sources"]["khulasah"]["pdfs"]
     wanted = [
         ("Maulid Barzanji", ["barzan", "barzanji", "برزنجي", "البرزنجي"]),
         ("Maulid Simthud Durar", ["simt", "simth", "simtudduror", "simtuddurar", "سمط", "الدرر"]),
-        ("Maulid Adh-Dhiyaul Lami", ["dhiya", "dhiy", "lami", "الضياء", "اللامع"]),
+        ("Maulid Adh-Dhiyaul Lami", ["dhiya", "dhiy", "lami", "ضياء", "الضياء", "اللامع"]),
         ("Maulid Azab", ["azab", "azb", "عزب", "العزب"]),
         ("Maulid Ad-Diba'i", ["diba", "dibai", "الدباعي", "ديبع"]),
         ("Qasidah Burdah", ["burd", "burdah", "البردة", "بردة"])
     ]
     aliases = []
+    used_paths = set()
+
+    def searchable(e):
+        return (e.get("title","") + " " + e.get("sourcePath","")).lower()
+
+    def pdf_probe(e):
+        try:
+            p = ASSETS / e["path"]
+            rd = PdfReader(str(p))
+            parts = []
+            meta = rd.metadata
+            if meta:
+                parts.extend([str(getattr(meta,"title","") or ""), str(getattr(meta,"subject","") or "")])
+            for pg in rd.pages[:2]:
+                try:
+                    parts.append(pg.extract_text() or "")
+                except Exception:
+                    pass
+            return " ".join(parts).lower()
+        except Exception:
+            return ""
+
+    probes = {}
     for label, keys in wanted:
         hit = None
+        # fast path: filename/source path
         for e in pool:
-            hay = (e.get("title","") + " " + e.get("sourcePath","")).lower()
+            if e["path"] in used_paths: continue
+            hay = searchable(e)
             if any(k.lower() in hay for k in keys):
-                hit = dict(e)
-                hit["title"] = label
-                hit["source"] = "rawindroid"
-                hit["deduplicated"] = True
-                aliases.append(hit)
-                print("[rawindroid]", label, "->", e.get("title"))
-                break
+                hit = e; break
+
+        # slow path: inspect PDF metadata/text
         if hit is None:
+            print("[rawindroid-scan-text]", label)
+            for i,e in enumerate(pool):
+                if e["path"] in used_paths: continue
+                path=e["path"]
+                if path not in probes:
+                    probes[path]=pdf_probe(e)
+                hay=probes[path]
+                if any(k.lower() in hay for k in keys):
+                    hit=e; break
+                if i and i % 150 == 0:
+                    print("[rawindroid-scan]", label, i, "/", len(pool))
+
+        if hit is not None:
+            alias = dict(hit)
+            alias["title"] = label
+            alias["source"] = "rawindroid"
+            alias["deduplicated"] = True
+            aliases.append(alias)
+            used_paths.add(hit["path"])
+            print("[rawindroid]", label, "->", hit.get("title"), hit.get("path"))
+        else:
             print("[rawindroid-missing]", label)
+
     catalog["sources"]["rawindroid"] = {"pdfs": aliases, "audios": [], "html": []}
     return len(aliases)
 

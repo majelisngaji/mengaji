@@ -16,16 +16,6 @@ WEBTPL = ROOT / "scripts" / "offline_web"
 UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/155 Safari/537.36"
 
 SOURCES = {
-    "rawindroid": {
-        "urls": [
-            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?version=latest",
-            "https://d.apkpure.com/b/XAPK/id.kitabkuning.rawiandroid?version=latest"
-        ],
-        "pages": [
-            "https://apkpure.net/rawindroid-kitab-maulid-nabi/id.kitabkuning.rawiandroid/download",
-            "https://apkpure.net/id/rawindroid-kitab-maulid-nabi/id.kitabkuning.rawiandroid"
-        ]
-    },
     "baalwi": {
         "urls": [
             "https://d.apkpure.com/b/XAPK/com.baalwi?version=latest",
@@ -33,17 +23,19 @@ SOURCES = {
         ],
         "pages": [
             "https://apkpure.net/baalwi/com.baalwi/download",
-            "https://apkpure.net/id/baalwi/com.baalwi"
+            "https://apkpure.net/id/baalwi/com.baalwi",
+            "https://baalwi.en.uptodown.com/android/download"
         ]
     },
     "khulasah": {
         "urls": [
-            "https://d.apkpure.com/b/APK/com.praylatest.activities?version=latest",
-            "https://d.apkpure.com/b/XAPK/com.praylatest.activities?version=latest"
+            "https://d.apkpure.com/b/XAPK/com.praylatest.activities?version=latest",
+            "https://d.apkpure.com/b/APK/com.praylatest.activities?version=latest"
         ],
         "pages": [
             "https://apkpure.net/alkhulasah/com.praylatest.activities/download",
-            "https://apkpure.net/id/alkhulasah/com.praylatest.activities/download/4.2.2"
+            "https://apkpure.net/id/alkhulasah/com.praylatest.activities/download/4.2.2",
+            "https://www.apkturbo.com/apps/alkhulasah/com.praylatest.activities/"
         ]
     }
 }
@@ -169,23 +161,6 @@ def collect(name, root):
         elif ext in AUDIO_EXT:
             rel=copy_unique(p,base/"audio",useda)
             audios.append({"title":slug(p.stem,120),"path":"library/%s/audio/%s"%(name,rel),"source":name,"type":"audio","sourcePath":str(p.relative_to(root))[:300]})
-    if name=="rawindroid":
-        asset_dirs=[p for p in root.rglob("assets") if p.is_dir()]
-        for idx,ad in enumerate(sorted(asset_dirs,key=lambda x:len(x.parts))):
-            for p in ad.rglob("*"):
-                if not p.is_file() or p.suffix.lower() not in WEB_EXT: continue
-                try: rr=p.relative_to(ad)
-                except Exception: continue
-                dst=base/"web"/("asset%d"%idx)/rr
-                dst.parent.mkdir(parents=True,exist_ok=True)
-                shutil.copy2(p,dst)
-                if p.suffix.lower() in {".html",".htm"}:
-                    htmls.append({"title":slug(p.stem,120),"path":"library/%s/web/asset%d/%s"%(name,idx,str(rr).replace("\\","/")),"source":name,"type":"html"})
-        if not htmls:
-            for p in root.rglob("*.html"):
-                rel="standalone/%s-%s.html"%(slug(p.stem,50),digest(p)[:8])
-                dst=base/"web"/rel; dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(p,dst)
-                htmls.append({"title":slug(p.stem,120),"path":"library/%s/web/%s"%(name,rel),"source":name,"type":"html"})
     pdfs.sort(key=lambda x:x["title"].lower()); audios.sort(key=lambda x:x["title"].lower()); htmls.sort(key=lambda x:x["title"].lower())
     print("[catalog]",name,len(pdfs),"PDF",len(audios),"audio",len(htmls),"HTML")
     return {"pdfs":pdfs,"audios":audios,"html":htmls}
@@ -232,7 +207,7 @@ def main():
     totalhtml=sum(len(v["html"]) for v in catalog["sources"].values())
     print("[done] PDF",totalpdf,"HTML",totalhtml)
     if totalpdf<20: raise RuntimeError("incomplete sources: too few PDFs")
-    if totalhtml<3: raise RuntimeError("Rawindroid content incomplete")
+    if len(catalog["sources"]["rawindroid"]["pdfs"])<4: raise RuntimeError("Rawindroid overlapping maulid titles incomplete")
     if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8")))!=114: raise RuntimeError("Quran incomplete")
 
 if __name__=="__main__": main()

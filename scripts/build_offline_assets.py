@@ -17,6 +17,13 @@ WEBTPL = ROOT / "scripts" / "offline_web"
 UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/155 Safari/537.36"
 
 SOURCES = {
+    "rawindroid": {
+        "urls": [
+            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?versionCode=2",
+            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?version=latest"
+        ],
+        "pages": []
+    },
     "baalwi": {
         "urls": [
             "https://d.apkpure.com/b/XAPK/com.baalwi?version=latest",
@@ -208,6 +215,64 @@ def collect(name, root):
     print("[catalog]",name,len(pdfs),"PDF",len(audios),"audio",len(htmls),"HTML")
     return {"pdfs":pdfs,"audios":audios,"html":htmls}
 
+def collect_rawindroid(root):
+    base=ASSETS/"library"/"rawindroid"
+    text_ext={".html",".htm",".js",".json",".txt",".xml",".css",".dart"}
+    markers={
+        "Maulid Barzanji":[r"barzanji",r"barzan"],
+        "Maulid Simthud Durar":[r"simt.{0,10}dur",r"simth.{0,10}dur"],
+        "Maulid Adh-Dhiyaul Lami":[r"dhiya.{0,12}lami",r"dhiy.{0,12}lami"],
+        "Maulid Azab":[r"maulid.{0,20}azab",r"rawi.{0,20}azab",r"al[- ]?azab"],
+        "Maulid Ad-Diba'i":[r"maulid.{0,20}diba",r"rawi.{0,20}diba",r"ad[- ]?diba"],
+        "Qasidah Burdah":[r"burdah",r"burda"]
+    }
+    matches={k:[] for k in markers}
+    entry_candidates=[]
+    copied_roots=[]
+
+    # Copy every Android assets tree intact so its own relative paths keep working.
+    asset_dirs=[p for p in root.rglob("assets") if p.is_dir()]
+    for idx,ad in enumerate(sorted(asset_dirs,key=lambda p:len(p.parts))):
+        dstroot=base/("assets%d"%idx)
+        try:
+            shutil.copytree(ad,dstroot,dirs_exist_ok=True)
+            copied_roots.append(dstroot)
+        except Exception as e:
+            print("[rawindroid-copy-warn]",ad,e)
+
+    # Flutter usually stores web/data under assets/flutter_assets; web wrappers use assets/www/public.
+    for dstroot in copied_roots:
+        for p in dstroot.rglob("*"):
+            if not p.is_file(): continue
+            rel=str(p.relative_to(ASSETS)).replace("\\","/")
+            low=p.name.lower()
+            if low=="index.html":
+                entry_candidates.append(rel)
+            if p.suffix.lower() in text_ext and p.stat().st_size <= 12*1024*1024:
+                try:
+                    txt=p.read_text("utf-8",errors="ignore").lower()
+                except Exception:
+                    continue
+                for label,pats in markers.items():
+                    if any(re.search(pat,txt,re.I|re.S) for pat in pats):
+                        if len(matches[label])<12: matches[label].append(rel)
+
+    # Copy likely Flutter resource files outside assets if needed (rare), but never native binaries.
+    for label,arr in matches.items():
+        print("[rawindroid-match]",label,"=>",arr[:5])
+    print("[rawindroid-entry-candidates]",entry_candidates[:20])
+
+    # Prefer web entrypoints that live in www/public before generic index files.
+    entry=""
+    ranked=sorted(entry_candidates,key=lambda x:(0 if "/www/" in x or "/public/" in x else 1,len(x)))
+    if ranked: entry=ranked[0]
+
+    # Also catalog PDFs/audio if Rawindroid carries any.
+    generic=collect("rawindroid",root)
+    generic["appEntry"]=entry
+    generic["matches"]=matches
+    return generic
+
 def quran():
     qdir=ASSETS/"quran"; qdir.mkdir(parents=True,exist_ok=True); idx=[]
     for n in range(1,115):
@@ -327,9 +392,12 @@ def main():
         download(name,cfg,arc)
         ext=WORK/(name+"_extracted")
         explode(arc,ext)
-        catalog["sources"][name]=collect(name,ext)
+        if name=="rawindroid":
+            catalog["sources"][name]=collect_rawindroid(ext)
+        else:
+            catalog["sources"][name]=collect(name,ext)
 
-    alias_count = add_rawindroid_aliases(catalog)
+    alias_count = 0
 
     for f in ["index.html","style.css","app.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
@@ -340,13 +408,16 @@ def main():
 
     totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
     totalaudio=sum(len(v["audios"]) for v in catalog["sources"].values())
-    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid aliases",alias_count)
+    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid appEntry",catalog["sources"]["rawindroid"].get("appEntry",""))
 
     # Hard build gates: never publish an empty/partial APK again.
     if len(catalog["sources"]["baalwi"]["pdfs"]) < 700:
         raise RuntimeError("BaAlwi incomplete")
     if len(catalog["sources"]["khulasah"]["pdfs"]) < 50:
         raise RuntimeError("Al-Khulasah incomplete")
+    raw=catalog["sources"]["rawindroid"]
+    if not raw.get("appEntry") and not any(raw.get("matches",{}).values()):
+        raise RuntimeError("Rawindroid content was not detected")
     if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8"))) != 114:
         raise RuntimeError("Quran incomplete")
     if not (ASSETS/"index.html").exists() or not (ASSETS/"catalog.json").exists():

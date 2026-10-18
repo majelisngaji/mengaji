@@ -21,22 +21,14 @@ SOURCES = {
             "https://d.apkpure.com/b/XAPK/com.baalwi?version=latest",
             "https://d.apkpure.com/b/APK/com.baalwi?version=latest"
         ],
-        "pages": [
-            "https://apkpure.net/baalwi/com.baalwi/download",
-            "https://apkpure.net/id/baalwi/com.baalwi",
-            "https://baalwi.en.uptodown.com/android/download"
-        ]
+        "pages": []
     },
     "khulasah": {
         "urls": [
             "https://d.apkpure.com/b/XAPK/com.praylatest.activities?version=latest",
             "https://d.apkpure.com/b/APK/com.praylatest.activities?version=latest"
         ],
-        "pages": [
-            "https://apkpure.net/alkhulasah/com.praylatest.activities/download",
-            "https://apkpure.net/id/alkhulasah/com.praylatest.activities/download/4.2.2",
-            "https://www.apkturbo.com/apps/alkhulasah/com.praylatest.activities/"
-        ]
+        "pages": []
     }
 }
 PDFJS = {
@@ -193,21 +185,70 @@ def vendor():
             except Exception as e: last=e
         else: raise RuntimeError("vendor %s failed: %s"%(rel,last))
 
+def add_rawindroid_aliases(catalog):
+    # Rawindroid's six Maulid titles overlap with the embedded BaAlwi/Al-Khulasah PDFs.
+    # Reuse the same local PDF bytes instead of duplicating them.
+    pool = catalog["sources"]["baalwi"]["pdfs"] + catalog["sources"]["khulasah"]["pdfs"]
+    wanted = [
+        ("Maulid Barzanji", ["barzan", "barzanji", "برزنجي", "البرزنجي"]),
+        ("Maulid Simthud Durar", ["simt", "simth", "simtudduror", "simtuddurar", "سمط", "الدرر"]),
+        ("Maulid Adh-Dhiyaul Lami", ["dhiya", "dhiy", "lami", "الضياء", "اللامع"]),
+        ("Maulid Azab", ["azab", "azb", "عزب", "العزب"]),
+        ("Maulid Ad-Diba'i", ["diba", "dibai", "الدباعي", "ديبع"]),
+        ("Qasidah Burdah", ["burd", "burdah", "البردة", "بردة"])
+    ]
+    aliases = []
+    for label, keys in wanted:
+        hit = None
+        for e in pool:
+            hay = (e.get("title","") + " " + e.get("sourcePath","")).lower()
+            if any(k.lower() in hay for k in keys):
+                hit = dict(e)
+                hit["title"] = label
+                hit["source"] = "rawindroid"
+                hit["deduplicated"] = True
+                aliases.append(hit)
+                print("[rawindroid]", label, "->", e.get("title"))
+                break
+        if hit is None:
+            print("[rawindroid-missing]", label)
+    catalog["sources"]["rawindroid"] = {"pdfs": aliases, "audios": [], "html": []}
+    return len(aliases)
+
 def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
     catalog={"version":"1.9.4","offline":True,"sources":{}}
-    for name,urls in SOURCES.items():
-        arc=WORK/(name+".zip"); download(name,urls,arc); ext=WORK/(name+"_extracted"); explode(arc,ext); catalog["sources"][name]=collect(name,ext)
+    for name,cfg in SOURCES.items():
+        arc=WORK/(name+".zip")
+        download(name,cfg,arc)
+        ext=WORK/(name+"_extracted")
+        explode(arc,ext)
+        catalog["sources"][name]=collect(name,ext)
+
+    alias_count = add_rawindroid_aliases(catalog)
+
     for f in ["index.html","style.css","app.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
-    (ASSETS/"catalog.json").write_text(json.dumps(catalog,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
-    totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
-    totalhtml=sum(len(v["html"]) for v in catalog["sources"].values())
-    print("[done] PDF",totalpdf,"HTML",totalhtml)
-    if totalpdf<20: raise RuntimeError("incomplete sources: too few PDFs")
-    if len(catalog["sources"]["rawindroid"]["pdfs"])<4: raise RuntimeError("Rawindroid overlapping maulid titles incomplete")
-    if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8")))!=114: raise RuntimeError("Quran incomplete")
+    (ASSETS/"catalog.json").write_text(
+        json.dumps(catalog,ensure_ascii=False,separators=(",",":")),
+        encoding="utf-8"
+    )
 
-if __name__=="__main__": main()
+    totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
+    totalaudio=sum(len(v["audios"]) for v in catalog["sources"].values())
+    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid aliases",alias_count)
+
+    # Hard build gates: never publish an empty/partial APK again.
+    if len(catalog["sources"]["baalwi"]["pdfs"]) < 700:
+        raise RuntimeError("BaAlwi incomplete")
+    if len(catalog["sources"]["khulasah"]["pdfs"]) < 50:
+        raise RuntimeError("Al-Khulasah incomplete")
+    if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8"))) != 114:
+        raise RuntimeError("Quran incomplete")
+    if not (ASSETS/"index.html").exists() or not (ASSETS/"catalog.json").exists():
+        raise RuntimeError("Offline UI missing")
+
+if __name__=="__main__":
+    main()

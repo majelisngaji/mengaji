@@ -365,7 +365,7 @@ def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
-    catalog={"version":"2.0.0","offline":True,"sources":{}}
+    catalog={"version":"2.0.1","offline":True,"sources":{}}
     for name,cfg in SOURCES.items():
         arc=WORK/(name+".zip")
         download(name,cfg,arc)
@@ -376,7 +376,38 @@ def main():
         else:
             catalog["sources"][name]=collect(name,ext)
 
-    alias_count = add_rawindroid_aliases(catalog)
+    # Build the six Rawindroid/Maulid entries from the exact local HTML books.
+    exact_files = [
+        ("Maulid Simthud Durar", "1.sim.html"),
+        ("Maulid Barzanji", "2.bar.html"),
+        ("Maulid Adh-Dhiyaul Lami'", "3.dhi.html"),
+        ("Maulid Ad-Diba'i", "4.diba.html"),
+        ("Maulid Azab", "5.azab.html"),
+        ("Qasidah Burdah", "6.burdah.html"),
+    ]
+    raw_html=[]
+    all_match_paths=set()
+    for arr in catalog["sources"]["rawi_complete"].get("matches",{}).values():
+        all_match_paths.update(arr)
+    for label,filename in exact_files:
+        candidates=[p for p in all_match_paths if p.endswith("/"+filename)]
+        if not candidates:
+            # fallback to the copied asset tree if the marker scanner missed one
+            candidates=[
+                str(p.relative_to(ASSETS)).replace("\\","/")
+                for p in (ASSETS/"library"/"rawi_complete").rglob(filename)
+            ]
+        if not candidates:
+            raise RuntimeError("Missing exact local Maulid file: "+filename)
+        raw_html.append({
+            "title":label,
+            "path":sorted(candidates,key=len)[0],
+            "source":"rawindroid",
+            "type":"html"
+        })
+    catalog["sources"]["rawindroid"]={"pdfs":[],"audios":[],"html":raw_html}
+    alias_count=len(raw_html)
+    print("[rawindroid-exact]",[(e["title"],e["path"]) for e in raw_html])
 
     for f in ["index.html","style.css","app.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
@@ -387,16 +418,15 @@ def main():
 
     totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
     totalaudio=sum(len(v["audios"]) for v in catalog["sources"].values())
-    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid aliases",alias_count,"Rawi complete entry",catalog["sources"]["rawi_complete"].get("appEntry",""))
+    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid exact HTML",alias_count)
 
     # Hard build gates: never publish an empty/partial APK again.
     if len(catalog["sources"]["baalwi"]["pdfs"]) < 700:
         raise RuntimeError("BaAlwi incomplete")
     if len(catalog["sources"]["khulasah"]["pdfs"]) < 50:
         raise RuntimeError("Al-Khulasah incomplete")
-    rawi=catalog["sources"]["rawi_complete"]
-    if not rawi.get("appEntry") and sum(bool(v) for v in rawi.get("matches",{}).values()) < 6:
-        raise RuntimeError("Complete Rawi source was not detected")
+    if len(catalog["sources"]["rawindroid"]["html"]) != 6:
+        raise RuntimeError("Rawindroid exact HTML incomplete")
     if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8"))) != 114:
         raise RuntimeError("Quran incomplete")
     if not (ASSETS/"index.html").exists() or not (ASSETS/"catalog.json").exists():

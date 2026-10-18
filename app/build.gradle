@@ -9,9 +9,9 @@ android {
     defaultConfig {
         applicationId "com.mrobbie.majelismengaji"
         minSdk 23
-        targetSdk 29
-        versionCode 6
-        versionName "1.9.3"
+        targetSdk 35
+        versionCode 7
+        versionName "1.9.4"
     }
 
     buildTypes {
@@ -21,6 +21,10 @@ android {
         debug {
             applicationIdSuffix ""
         }
+    }
+
+    androidResources {
+        noCompress += ['pdf', 'mp3', 'm4a', 'aac', 'ogg', 'oga', 'wav']
     }
 
     compileOptions {

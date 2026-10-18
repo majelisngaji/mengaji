@@ -16,18 +16,36 @@ WEBTPL = ROOT / "scripts" / "offline_web"
 UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/155 Safari/537.36"
 
 SOURCES = {
-    "rawindroid": [
-        "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?version=latest",
-        "https://d.apkpure.com/b/XAPK/id.kitabkuning.rawiandroid?version=latest"
-    ],
-    "baalwi": [
-        "https://d.apkpure.com/b/XAPK/com.baalwi?version=latest",
-        "https://d.apkpure.com/b/APK/com.baalwi?version=latest"
-    ],
-    "khulasah": [
-        "https://d.apkpure.com/b/APK/com.praylatest.activities?version=latest",
-        "https://d.apkpure.com/b/XAPK/com.praylatest.activities?version=latest"
-    ]
+    "rawindroid": {
+        "urls": [
+            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?version=latest",
+            "https://d.apkpure.com/b/XAPK/id.kitabkuning.rawiandroid?version=latest"
+        ],
+        "pages": [
+            "https://apkpure.net/rawindroid-kitab-maulid-nabi/id.kitabkuning.rawiandroid/download",
+            "https://apkpure.net/id/rawindroid-kitab-maulid-nabi/id.kitabkuning.rawiandroid"
+        ]
+    },
+    "baalwi": {
+        "urls": [
+            "https://d.apkpure.com/b/XAPK/com.baalwi?version=latest",
+            "https://d.apkpure.com/b/APK/com.baalwi?version=latest"
+        ],
+        "pages": [
+            "https://apkpure.net/baalwi/com.baalwi/download",
+            "https://apkpure.net/id/baalwi/com.baalwi"
+        ]
+    },
+    "khulasah": {
+        "urls": [
+            "https://d.apkpure.com/b/APK/com.praylatest.activities?version=latest",
+            "https://d.apkpure.com/b/XAPK/com.praylatest.activities?version=latest"
+        ],
+        "pages": [
+            "https://apkpure.net/alkhulasah/com.praylatest.activities/download",
+            "https://apkpure.net/id/alkhulasah/com.praylatest.activities/download/4.2.2"
+        ]
+    }
 }
 PDFJS = {
     "vendor/pdf.min.js": [
@@ -51,28 +69,56 @@ def slug(v, limit=90):
     v = re.sub(r"[^\w\u0600-\u06FF .()\-]+","_",v,flags=re.UNICODE)
     return (v[:limit].strip(" ._-") or "file")
 
-def download(name, urls, out):
-    last = None
-    for url in urls:
+def _try_archive(name, url, out):
+    print("[download]", name, url)
+    r = S.get(url, timeout=240, allow_redirects=True, stream=True)
+    r.raise_for_status()
+    size = 0
+    first = b""
+    with open(out,"wb") as f:
+        for chunk in r.iter_content(1024*1024):
+            if not chunk: continue
+            if not first: first = chunk[:16]
+            f.write(chunk); size += len(chunk)
+    if size < 50000 or first.startswith(b"<!") or not zipfile.is_zipfile(out):
+        raise RuntimeError("invalid archive, size=%s content-type=%s" % (size, r.headers.get("content-type")))
+    print("[ok]", name, round(size/1024/1024,1), "MB")
+    return True
+
+def _scrape_download_links(page):
+    print("[scrape]", page)
+    r=S.get(page,timeout=90,allow_redirects=True)
+    r.raise_for_status()
+    txt=htmlmod.unescape(r.text).replace("\\/","/")
+    links=[]
+    for m in re.findall(r'https?://[^"\'<> ]+',txt):
+        if ("apkpure" in m and ("download" in m or "/b/APK/" in m or "/b/XAPK/" in m)):
+            links.append(m.replace("&amp;","&"))
+    for m in re.findall(r'href=["\']([^"\']+)["\']',txt,re.I):
+        if "download.apkpure" in m or "d.apkpure.com" in m:
+            links.append(m.replace("&amp;","&"))
+    out=[]
+    for u in links:
+        if u not in out: out.append(u)
+    print("[scrape-links]", len(out))
+    return out
+
+def download(name, cfg, out):
+    last=None
+    candidates=list(cfg.get("urls",[]))
+    for page in cfg.get("pages",[]):
         try:
-            print("[download]", name, url)
-            r = S.get(url, timeout=240, allow_redirects=True, stream=True)
-            r.raise_for_status()
-            size = 0
-            first = b""
-            with open(out,"wb") as f:
-                for chunk in r.iter_content(1024*1024):
-                    if not chunk: continue
-                    if not first: first = chunk[:16]
-                    f.write(chunk); size += len(chunk)
-            if size < 50000 or first.startswith(b"<!") or not zipfile.is_zipfile(out):
-                raise RuntimeError("invalid archive, size=%s" % size)
-            print("[ok]", name, round(size/1024/1024,1), "MB")
-            return
+            candidates.extend(_scrape_download_links(page))
         except Exception as e:
-            last = e
-            print("[warn]", name, e)
-            out.unlink(missing_ok=True)
+            print("[warn] scrape",page,e)
+    seen=[]
+    for url in candidates:
+        if url in seen: continue
+        seen.append(url)
+        try:
+            if _try_archive(name,url,out): return
+        except Exception as e:
+            last=e; print("[warn]",name,e); out.unlink(missing_ok=True)
     raise RuntimeError("download failed %s: %s" % (name,last))
 
 def unzip(path, dest):

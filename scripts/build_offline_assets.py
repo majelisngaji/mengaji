@@ -365,7 +365,7 @@ def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
-    catalog={"version":"2.0.1","offline":True,"sources":{}}
+    catalog={"version":"2.0.2","offline":True,"sources":{}}
     for name,cfg in SOURCES.items():
         arc=WORK/(name+".zip")
         download(name,cfg,arc)

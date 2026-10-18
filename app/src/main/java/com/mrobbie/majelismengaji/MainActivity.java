@@ -17,6 +17,8 @@ import android.widget.FrameLayout;
 
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final String LOCAL_HOST = "app.local";
@@ -103,10 +105,10 @@ public class MainActivity extends Activity {
             String mime = mimeType(path);
             String encoding = isTextMime(mime) ? "UTF-8" : null;
             WebResourceResponse response = new WebResourceResponse(mime, encoding, input);
-            response.setResponseHeaders(java.util.Map.of(
-                    "Access-Control-Allow-Origin", "https://" + LOCAL_HOST,
-                    "Cache-Control", "no-store"
-            ));
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "https://" + LOCAL_HOST);
+            headers.put("Cache-Control", "no-store");
+            response.setResponseHeaders(headers);
             return response;
         } catch (Exception e) {
             return new WebResourceResponse("text/plain", "UTF-8", null);

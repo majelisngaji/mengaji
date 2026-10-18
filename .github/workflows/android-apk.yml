@@ -40,6 +40,9 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
+      - name: Validate offline JavaScript
+        run: node --check app/src/main/assets/app.js
+
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
 
@@ -48,23 +51,28 @@ jobs:
           unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q "assets/index.html"
           unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q "assets/catalog.json"
           unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q "assets/quran/1.json"
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -q "assets/quran/114.json"
+          if grep -q "android.permission.INTERNET" app/src/main/AndroidManifest.xml; then
+            echo "ERROR: INTERNET permission must not exist in offline APK"
+            exit 1
+          fi
           ls -lh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Publish direct APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v1.9.4.apk
-          gh release delete offline-v1.9.4 -y --cleanup-tag || true
-          gh release create offline-v1.9.4 Majelis_Mengaji_OFFLINE_v1.9.4.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.0.apk
+          gh release delete offline-v2.0.0 -y --cleanup-tag || true
+          gh release create offline-v2.0.0 Majelis_Mengaji_OFFLINE_v2.0.0.apk \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v1.9.4" \
-            --notes "APK offline penuh. Quran 114 surah, BaAlwi, Al-Khulasah, dan enam koleksi Maulid Rawindroid tertanam lokal. Tanpa sinkronisasi dan tanpa kompas kiblat."
+            --title "Majelis Mengaji OFFLINE v2.0.0" \
+            --notes "APK offline penuh dengan tampilan Majelis Mengaji dipulihkan. Quran 114 surah, BaAlwi, Al-Khulasah, Maulid, Yasin, Tahlil, Simtud Duror dan jadwal sholat Palembang bekerja lokal. Tanpa sinkronisasi, tanpa permission internet, tanpa kompas kiblat."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v1.9.4
+          name: Majelis-Mengaji-OFFLINE-v2.0.0
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0

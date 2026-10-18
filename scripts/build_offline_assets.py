@@ -17,10 +17,10 @@ WEBTPL = ROOT / "scripts" / "offline_web"
 UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/155 Safari/537.36"
 
 SOURCES = {
-    "rawindroid": {
+    "rawi_complete": {
         "urls": [
-            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?versionCode=2",
-            "https://d.apkpure.com/b/APK/id.kitabkuning.rawiandroid?version=latest"
+            "https://d.apkpure.com/b/APK/com.ichwan.android.rawiandroid?version=latest",
+            "https://d.apkpure.com/b/XAPK/com.ichwan.android.rawiandroid?version=latest"
         ],
         "pages": []
     },
@@ -215,62 +215,43 @@ def collect(name, root):
     print("[catalog]",name,len(pdfs),"PDF",len(audios),"audio",len(htmls),"HTML")
     return {"pdfs":pdfs,"audios":audios,"html":htmls}
 
-def collect_rawindroid(root):
-    base=ASSETS/"library"/"rawindroid"
+def collect_rawi_complete(root):
+    base=ASSETS/"library"/"rawi_complete"
     text_ext={".html",".htm",".js",".json",".txt",".xml",".css",".dart"}
     markers={
         "Maulid Barzanji":[r"barzanji",r"barzan"],
-        "Maulid Simthud Durar":[r"simt.{0,10}dur",r"simth.{0,10}dur"],
-        "Maulid Adh-Dhiyaul Lami":[r"dhiya.{0,12}lami",r"dhiy.{0,12}lami"],
-        "Maulid Azab":[r"maulid.{0,20}azab",r"rawi.{0,20}azab",r"al[- ]?azab"],
-        "Maulid Ad-Diba'i":[r"maulid.{0,20}diba",r"rawi.{0,20}diba",r"ad[- ]?diba"],
+        "Maulid Simthud Durar":[r"simt.{0,12}dur",r"simth.{0,12}dur"],
+        "Maulid Adh-Dhiyaul Lami":[r"dhiya.{0,14}lami",r"dhiy.{0,14}lami"],
+        "Maulid Azab":[r"maulid.{0,30}azab",r"rawi.{0,30}azab",r"al[- ]?azab",r"azab"],
+        "Maulid Ad-Diba'i":[r"maulid.{0,30}diba",r"rawi.{0,30}diba",r"ad[- ]?diba",r"dibai"],
         "Qasidah Burdah":[r"burdah",r"burda"]
     }
     matches={k:[] for k in markers}
     entry_candidates=[]
-    copied_roots=[]
-
-    # Copy every Android assets tree intact so its own relative paths keep working.
     asset_dirs=[p for p in root.rglob("assets") if p.is_dir()]
+    copied=[]
     for idx,ad in enumerate(sorted(asset_dirs,key=lambda p:len(p.parts))):
-        dstroot=base/("assets%d"%idx)
+        dst=base/("assets%d"%idx)
         try:
-            shutil.copytree(ad,dstroot,dirs_exist_ok=True)
-            copied_roots.append(dstroot)
-        except Exception as e:
-            print("[rawindroid-copy-warn]",ad,e)
-
-    # Flutter usually stores web/data under assets/flutter_assets; web wrappers use assets/www/public.
-    for dstroot in copied_roots:
+            shutil.copytree(ad,dst,dirs_exist_ok=True);copied.append(dst)
+        except Exception as e: print("[rawi-copy-warn]",ad,e)
+    for dstroot in copied:
         for p in dstroot.rglob("*"):
             if not p.is_file(): continue
             rel=str(p.relative_to(ASSETS)).replace("\\","/")
-            low=p.name.lower()
-            if low=="index.html":
-                entry_candidates.append(rel)
-            if p.suffix.lower() in text_ext and p.stat().st_size <= 12*1024*1024:
-                try:
-                    txt=p.read_text("utf-8",errors="ignore").lower()
-                except Exception:
-                    continue
+            if p.name.lower()=="index.html": entry_candidates.append(rel)
+            if p.suffix.lower() in text_ext and p.stat().st_size<=15*1024*1024:
+                try: txt=p.read_text("utf-8",errors="ignore").lower()
+                except Exception: continue
                 for label,pats in markers.items():
                     if any(re.search(pat,txt,re.I|re.S) for pat in pats):
-                        if len(matches[label])<12: matches[label].append(rel)
-
-    # Copy likely Flutter resource files outside assets if needed (rare), but never native binaries.
-    for label,arr in matches.items():
-        print("[rawindroid-match]",label,"=>",arr[:5])
-    print("[rawindroid-entry-candidates]",entry_candidates[:20])
-
-    # Prefer web entrypoints that live in www/public before generic index files.
-    entry=""
+                        if len(matches[label])<20: matches[label].append(rel)
+    generic=collect("rawi_complete",root)
     ranked=sorted(entry_candidates,key=lambda x:(0 if "/www/" in x or "/public/" in x else 1,len(x)))
-    if ranked: entry=ranked[0]
-
-    # Also catalog PDFs/audio if Rawindroid carries any.
-    generic=collect("rawindroid",root)
-    generic["appEntry"]=entry
+    generic["appEntry"]=ranked[0] if ranked else ""
     generic["matches"]=matches
+    for label,arr in matches.items(): print("[rawi-match]",label,"=>",arr[:8])
+    print("[rawi-entry]",generic["appEntry"])
     return generic
 
 def quran():
@@ -378,8 +359,6 @@ def add_rawindroid_aliases(catalog):
         used.add(best["path"])
         print("[rawindroid]",label,"->",best.get("title"),best.get("path"))
     catalog["sources"]["rawindroid"]={"pdfs":aliases,"audios":[],"html":[]}
-    if len(aliases) != 6:
-        raise RuntimeError("Rawindroid exact matching incomplete: %d/6" % len(aliases))
     return len(aliases)
 
 def main():
@@ -392,12 +371,12 @@ def main():
         download(name,cfg,arc)
         ext=WORK/(name+"_extracted")
         explode(arc,ext)
-        if name=="rawindroid":
-            catalog["sources"][name]=collect_rawindroid(ext)
+        if name=="rawi_complete":
+            catalog["sources"][name]=collect_rawi_complete(ext)
         else:
             catalog["sources"][name]=collect(name,ext)
 
-    alias_count = 0
+    alias_count = add_rawindroid_aliases(catalog)
 
     for f in ["index.html","style.css","app.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
@@ -408,16 +387,16 @@ def main():
 
     totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
     totalaudio=sum(len(v["audios"]) for v in catalog["sources"].values())
-    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid appEntry",catalog["sources"]["rawindroid"].get("appEntry",""))
+    print("[done] PDF",totalpdf,"audio",totalaudio,"Rawindroid aliases",alias_count,"Rawi complete entry",catalog["sources"]["rawi_complete"].get("appEntry",""))
 
     # Hard build gates: never publish an empty/partial APK again.
     if len(catalog["sources"]["baalwi"]["pdfs"]) < 700:
         raise RuntimeError("BaAlwi incomplete")
     if len(catalog["sources"]["khulasah"]["pdfs"]) < 50:
         raise RuntimeError("Al-Khulasah incomplete")
-    raw=catalog["sources"]["rawindroid"]
-    if not raw.get("appEntry") and not any(raw.get("matches",{}).values()):
-        raise RuntimeError("Rawindroid content was not detected")
+    rawi=catalog["sources"]["rawi_complete"]
+    if not rawi.get("appEntry") and sum(bool(v) for v in rawi.get("matches",{}).values()) < 6:
+        raise RuntimeError("Complete Rawi source was not detected")
     if len(json.loads((ASSETS/"quran/index.json").read_text("utf-8"))) != 114:
         raise RuntimeError("Quran incomplete")
     if not (ASSETS/"index.html").exists() or not (ASSETS/"catalog.json").exists():

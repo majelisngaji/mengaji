@@ -40,8 +40,21 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Validate offline JavaScript
-        run: node --check app/src/main/assets/app.js
+      - name: Validate vertical-only offline UI
+        run: |
+          node --check app/src/main/assets/app.js
+          grep -q '.menu-grid{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
+          grep -q '.collection-row{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
+          grep -q '.praybox{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
+          grep -q 'class="pdfpages"' app/src/main/assets/app.js
+          if grep -q 'grid-template-columns:1fr 1fr' app/src/main/assets/style.css; then
+            echo "ERROR: two-column content layout still exists"
+            exit 1
+          fi
+          if grep -q '.collection-row{display:flex' app/src/main/assets/style.css; then
+            echo "ERROR: horizontal collection row still exists"
+            exit 1
+          fi
 
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -62,17 +75,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.1.apk
-          gh release delete offline-v2.0.1 -y --cleanup-tag || true
-          gh release create offline-v2.0.1 Majelis_Mengaji_OFFLINE_v2.0.1.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.2.apk
+          gh release delete offline-v2.0.2 -y --cleanup-tag || true
+          gh release create offline-v2.0.2 Majelis_Mengaji_OFFLINE_v2.0.2.apk \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.0.1" \
-            --notes "APK offline penuh dengan tampilan Majelis Mengaji dipulihkan. Quran 114 surah, BaAlwi, Al-Khulasah, Maulid, Yasin, Tahlil, Simtud Duror dan jadwal sholat Palembang bekerja lokal. Tanpa sinkronisasi, tanpa permission internet, tanpa kompas kiblat."
+            --title "Majelis Mengaji OFFLINE v2.0.2" \
+            --notes "APK offline penuh v2.0.2. Semua konten aplikasi disusun satu kolom dan hanya scroll vertikal: Menu Utama, Koleksi Offline, jadwal sholat, daftar surah, daftar kitab, dan pembaca PDF kontinu ke bawah. Tanpa horizontal scroll, tanpa permission internet, tanpa kompas kiblat."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.0.1
+          name: Majelis-Mengaji-OFFLINE-v2.0.2
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0

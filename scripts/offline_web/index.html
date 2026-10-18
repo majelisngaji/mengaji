@@ -3,22 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0e4d37">
-<title>Majelis Mengaji Offline</title>
+<meta name="theme-color" content="#f8f6ed">
+<title>Majelis Mengaji</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="top">
-  <div class="brand">Majelis Ta'lim Anwarul Habib</div>
-  <div class="sub">Majelis Mengaji • Offline</div>
+<header class="appbar">
+  <div class="logo-mini">م</div>
+  <div class="headcopy"><div class="apptitle">Majelis Mengaji</div><div class="appsub">Majelis Ta'lim Anwarul Habib</div></div>
+  <button class="headbtn" id="fontQuick">T</button>
+  <button class="headbtn" id="nightQuick">☾</button>
 </header>
-<main class="page" id="content"><div class="empty">Memuat data lokal…</div></main>
+<main class="page" id="content"><div class="empty">Memuat bacaan offline…</div></main>
 <nav class="bottom">
-  <button class="nav active" data-nav="home"><b>⌂</b>Beranda</button>
-  <button class="nav" data-nav="quran"><b>📖</b>Alquran</button>
-  <button class="nav" data-nav="maulid"><b>🌙</b>Maulid</button>
-  <button class="nav" data-nav="kajian"><b>📚</b>Kajian</button>
-  <button class="nav" data-nav="donasi"><b>🤍</b>Donasi</button>
+  <button class="nav active" data-nav="home"><b>⌂</b><span>Beranda</span></button>
+  <button class="nav" data-nav="quran"><b>▣</b><span>Al-Qur'an</span></button>
+  <button class="nav" data-nav="tahlil"><b>◉</b><span>Tahlil</span></button>
+  <button class="nav" data-nav="simtud"><b>☆</b><span>Simtud</span></button>
 </nav>
 <script src="/vendor/pdf.min.js"></script>
 <script src="/app.js"></script>

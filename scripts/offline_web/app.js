@@ -29,8 +29,47 @@ function itemRow(e){let lang=e.lang?(' • '+e.lang):'',ico=e.type==='html'?'☆
 function renderList(title,entries,nav='home'){currentList={title,entries,nav};active(nav);shell('<div class="toolbar"><button class="back" id="back">←</button><h2>'+esc(title)+'</h2></div><input class="search" id="search" placeholder="Cari judul bacaan…"><span class="badge">'+entries.length+' bacaan offline</span><div class="list" id="list"></div>');$('#back').onclick=renderHome;let draw=()=>{let q=$('#search').value.toLowerCase().trim(),f=entries.filter(e=>(e.title+' '+(e.sourcePath||'')).toLowerCase().includes(q)).slice(0,900);$('#list').innerHTML=f.length?f.map(itemRow).join(''):'<div class="empty">Tidak ada hasil.</div>';$('[data-open]').forEach(b=>b.onclick=()=>openEntry(JSON.parse(decodeURIComponent(b.dataset.open))))};$('#search').oninput=draw;draw()}
 function openEntry(e){return e.type==='html'?openHtml(e):openPdf(e)}
 function openHtml(e){shell('<div class="toolbar"><button class="back" id="back">←</button><h2>'+esc(e.title)+'</h2></div><div class="htmlreader"><iframe id="rawframe" src="'+local(e.path)+'"></iframe></div>');$('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav)}
-async function openPdf(e){shell('<div class="toolbar"><button class="back" id="back">←</button><h2>'+esc(e.title)+'</h2><button class="smallbtn" id="minus">A−</button><button class="smallbtn" id="plus">A+</button></div><div class="reader"><div class="pdfwrap"><canvas id="pdfc"></canvas></div><div class="toolbar" style="margin-top:10px"><button class="back" id="prev">←</button><h2 id="pi">Memuat…</h2><button class="back" id="next">→</button></div></div>');$('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav);$('#minus').onclick=()=>{pdfScale=Math.max(.7,pdfScale-.2);drawPdf()};$('#plus').onclick=()=>{pdfScale=Math.min(2.8,pdfScale+.2);drawPdf()};try{pdfDoc=await pdfjsLib.getDocument({url:local(e.path),disableRange:true,disableStream:true}).promise;pageNum=1;await drawPdf();$('#prev').onclick=()=>{if(pageNum>1){pageNum--;drawPdf()}};$('#next').onclick=()=>{if(pageNum<pdfDoc.numPages){pageNum++;drawPdf()}}}catch(err){$('.reader').innerHTML='<div class="empty">Bacaan tidak dapat dibuka.<br>'+esc(err.message)+'</div>'}}
-async function drawPdf(){let p=await pdfDoc.getPage(pageNum),v=p.getViewport({scale:pdfScale}),c=$('#pdfc');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;$('#pi').textContent=pageNum+' / '+pdfDoc.numPages}
+async function openPdf(e){
+ shell('<div class="toolbar"><button class="back" id="back">←</button><h2>'+esc(e.title)+'</h2></div><div class="reader"><div id="pdfpages" class="pdfpages"><div class="empty">Memuat kitab offline…</div></div></div>');
+ $('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav);
+ try{
+   pdfDoc=await pdfjsLib.getDocument({url:local(e.path),disableRange:true,disableStream:true}).promise;
+   const holder=$('#pdfpages');
+   holder.innerHTML='';
+   for(let i=1;i<=pdfDoc.numPages;i++){
+     const sec=document.createElement('section');
+     sec.className='pdfpage';
+     sec.dataset.page=String(i);
+     sec.innerHTML='<div class="pageno">Halaman '+i+' / '+pdfDoc.numPages+'</div><canvas></canvas>';
+     holder.appendChild(sec);
+   }
+   const renderPage=async sec=>{
+     if(sec.dataset.rendered==='1'||sec.dataset.rendered==='loading')return;
+     sec.dataset.rendered='loading';
+     try{
+       const p=await pdfDoc.getPage(Number(sec.dataset.page));
+       const v=p.getViewport({scale:1.55});
+       const c=sec.querySelector('canvas');
+       c.width=Math.floor(v.width);
+       c.height=Math.floor(v.height);
+       await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;
+       sec.dataset.rendered='1';
+     }catch(err){
+       sec.dataset.rendered='error';
+       sec.innerHTML='<div class="pageno">Halaman '+sec.dataset.page+'</div><div class="empty">Halaman gagal dimuat.</div>';
+     }
+   };
+   const obs=new IntersectionObserver(entries=>{
+     entries.forEach(x=>{if(x.isIntersecting)renderPage(x.target)});
+   },{root:null,rootMargin:'900px 0px',threshold:0.01});
+   $$('.pdfpage').forEach(sec=>obs.observe(sec));
+   const first=$('.pdfpage');
+   if(first)renderPage(first);
+ }catch(err){
+   $('.reader').innerHTML='<div class="empty">Bacaan tidak dapat dibuka.<br>'+esc(err.message)+'</div>';
+ }
+}
+
 function renderQuran(){active('quran');shell('<div class="toolbar"><button class="back" id="back">←</button><h2>Al-Qur\'an</h2></div><input class="search" id="search" placeholder="Cari surah…"><div class="list" id="qlist"></div>');$('#back').onclick=renderHome;let draw=()=>{let q=$('#search').value.toLowerCase(),f=Q.filter(s=>(s.name+' '+s.arabic+' '+s.meaning).toLowerCase().includes(q));$('#qlist').innerHTML=f.map(s=>'<div class="item"><div class="num">'+s.number+'</div><div class="grow"><div class="ititle">'+esc(s.name)+' — '+esc(s.arabic)+'</div><div class="imeta">'+esc(s.meaning)+' • '+s.ayah+' ayat</div></div><button class="openbtn" data-s="'+s.number+'">Baca</button></div>').join('');$$('[data-s]').forEach(b=>b.onclick=()=>openSurah(+b.dataset.s))};$('#search').oninput=draw;draw()}
 async function openSurah(n){let s=await fetch(local('quran/'+n+'.json')).then(r=>r.json());localStorage.setItem('lastSurah',n);shell('<div class="toolbar"><button class="back" id="back">←</button><h2>'+esc(s.name)+'</h2><button class="smallbtn" id="minus">A−</button><button class="smallbtn" id="plus">A+</button></div><div class="reader" id="surah">'+(s.verses||[]).map(v=>'<div class="ayah"><div class="arab" style="font-size:'+arabSize+'px">'+esc(v.text)+' <span class="num">'+v.number+'</span></div><div class="trans">'+esc(v.translation_id||'')+'</div></div>').join('')+'</div><div class="toolbar"><button class="back" id="prev">← Surah</button><h2>'+n+' / 114</h2><button class="back" id="next">Surah →</button></div>');$('#back').onclick=renderQuran;$('#minus').onclick=()=>{arabSize=Math.max(24,arabSize-2);openSurah(n)};$('#plus').onclick=()=>{arabSize=Math.min(54,arabSize+2);openSurah(n)};$('#prev').onclick=()=>n>1&&openSurah(n-1);$('#next').onclick=()=>n<114&&openSurah(n+1)}
 function renderPrayer(){active('home');let d=new Date(),times=prayTimes(d);shell('<div class="toolbar"><button class="back" id="back">←</button><h2>Jadwal Sholat Palembang</h2></div><div class="hero" style="min-height:190px"><div class="eyebrow">DIHITUNG LANGSUNG DI HP</div><h1 style="font-size:38px">Jadwal<br>Sholat</h1><div class="guides"><small>LOKASI TETAP</small><strong>Palembang, Sumatera Selatan</strong></div></div><div class="praybox">'+Object.entries(times).map(([k,v])=>'<div class="pray"><b>'+k+'</b><span>'+v+'</span></div>').join('')+'</div><p class="sectionsub" style="margin-top:14px">Perhitungan astronomis offline; tidak memakai internet atau API.</p>');$('#back').onclick=renderHome}

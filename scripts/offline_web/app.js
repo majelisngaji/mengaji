@@ -31,7 +31,8 @@ function setNav(n){$$('.mn-nav').forEach(x=>x.classList.toggle('active',x.datase
 function bindGo(){$$('[data-go]').forEach(x=>x.onclick=()=>route(x.dataset.go))}
 function sourceName(e){if(e.source==='baalwi')return 'BaAlwi';if(e.source==='khulasah')return 'Al-Khulasah';if(e.source==='rawindroid')return 'Maulid';return 'Bacaan'}
 function displayTitle(e){let t=String(e.title||'').trim();const m=t.match(/^Kitab\s+(\d{1,4})(?:_(?:in|id|en|ar))?$/i);return m?'Kitab Koleksi No. '+m[1]:t}
-function allEntries(){let out=[];Object.entries(C.sources).forEach(([k,s])=>{if(k==='rawi_complete')return;out=out.concat(s.pdfs||[],s.html||[])});return out}
+function visibleEntries(list){return (list||[]).filter(e=>!e.hidden)}
+function allEntries(){let out=[];Object.entries(C.sources).forEach(([k,s])=>{if(k==='rawi_complete')return;out=out.concat(visibleEntries(s.pdfs),visibleEntries(s.html))});return out}
 function keyword(keys){return allEntries().filter(e=>{const h=(e.title+' '+(e.sourcePath||'')).toLowerCase();return keys.some(k=>h.includes(k.toLowerCase()))})}
 
 async function boot(){
@@ -39,6 +40,8 @@ async function boot(){
   C=await fetch(local('catalog.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('catalog '+r.status);return r.json()});
   Q=await fetch(local('quran/index.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('quran '+r.status);return r.json()});
   renderHome();
+  const pv=new URLSearchParams(location.search).get('preview');
+  if(pv){setTimeout(()=>route(pv),50);}
  }catch(e){setHtml('<div class="mn-empty"><h3>Data gagal dimuat</h3></div>')}
 }
 
@@ -100,8 +103,8 @@ function route(r){
   const other=keyword(['ratib','haddad','attas','مولد','راتب']).filter(x=>x.source!=='rawindroid');
   return renderList('Maulid & Ratib',[...exact,...other],'home');
  }
- if(r==='baalwi')return renderList('Koleksi BaAlwi',C.sources.baalwi.pdfs,'home');
- if(r==='khulasah')return renderList('Al-Khulasah',C.sources.khulasah.pdfs,'home');
+ if(r==='baalwi')return renderList('BaAlwi',visibleEntries(C.sources.baalwi.pdfs),'home');
+ if(r==='khulasah')return renderList('Al-Khulasah',visibleEntries(C.sources.khulasah.pdfs),'home');
  if(r==='shalat')return renderPrayer();
  if(r==='search')return renderGlobalSearch();
 }

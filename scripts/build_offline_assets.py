@@ -224,6 +224,28 @@ def debug_sqlite_catalog(root, source_name):
             conn=sqlite3.connect("file:"+str(db)+"?mode=ro",uri=True)
             tables=[r[0] for r in conn.execute("select name from sqlite_master where type='table'")]
             print("[catalog-db]",source_name,db.name,"tables",tables[:30])
+            if source_name=="khulasah" and "category_Details" in tables:
+                try:
+                    rows=list(conn.execute('select invocationIndex,title from category_Details where invocationIndex is not null order by invocationIndex'))
+                    print("[khulasah-all]",db.name,[(str(a),str(b)) for a,b in rows])
+                except Exception as e:
+                    print("[khulasah-all-warn]",db.name,e)
+            if source_name=="baalwi" and "ba_master_pdf" in tables and "ba_title_pdf_relation" in tables and "ba_titles" in tables:
+                try:
+                    rows=list(conn.execute("""
+                        select mp.id,mp.file_name_arabic,mp.file_name_indonesian,
+                               t.title_indonesian,t.title_english,t.title_arabic,
+                               r.sort_order,t.list_level,t.list_rank
+                        from ba_master_pdf mp
+                        join ba_title_pdf_relation r on r.pdf_id=mp.id
+                        join ba_titles t on t.title_id=r.title_id
+                        where mp.file_name_arabic is not null
+                        order by mp.id,r.sort_order,t.id
+                        limit 120
+                    """))
+                    print("[baalwi-join-sample]",[(str(x[0]),str(x[1]),str(x[2]),str(x[3]),str(x[4]),str(x[5]),str(x[6]),str(x[7]),str(x[8])) for x in rows])
+                except Exception as e:
+                    print("[baalwi-join-warn]",e)
             for table in tables[:20]:
                 try:
                     info=list(conn.execute('pragma table_info("'+table.replace('"','""')+'")'))

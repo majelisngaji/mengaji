@@ -19,14 +19,14 @@ radial-gradient(circle at 72% 48%,rgba(255,255,255,.10),transparent 24%),
 radial-gradient(circle at 82% 55%,rgba(231,196,95,.14),transparent 20%),
 linear-gradient(145deg,#064c38 0%,#0a6d50 72%,#064a38 100%);
 box-shadow:0 18px 40px rgba(4,71,49,.20)}
-.mn-hero:before{content:"";position:absolute;right:-42px;bottom:-18px;width:260px;height:205px;opacity:.34;background:
-radial-gradient(circle at 50% 46%,#f2d57e 0 4%,transparent 5%),
-linear-gradient(90deg,transparent 0 28%,rgba(255,255,255,.20) 28% 31%,transparent 31% 69%,rgba(255,255,255,.20) 69% 72%,transparent 72%),
-radial-gradient(ellipse at 50% 100%,rgba(255,255,255,.24) 0 38%,transparent 39%);
-border-radius:50% 50% 0 0}
-.mn-hero:after{content:"";position:absolute;inset:0;background-image:linear-gradient(30deg,rgba(221,188,78,.08) 1px,transparent 1px),linear-gradient(150deg,rgba(221,188,78,.06) 1px,transparent 1px);background-size:32px 32px;mask-image:linear-gradient(to right,#000,transparent 55%)}
-.mn-hero-copy{position:absolute;z-index:2;left:28px;top:78px}
-.mn-hero h1{margin:0;color:white;font-family:Georgia,"Times New Roman",serif;font-size:52px;line-height:.95;letter-spacing:-.02em;text-shadow:0 2px 8px rgba(0,0,0,.10)}
+.mn-hero:before{content:"";position:absolute;inset:0;background:
+radial-gradient(circle at 16% 20%,rgba(218,187,89,.16),transparent 24%),
+linear-gradient(30deg,rgba(221,188,78,.07) 1px,transparent 1px),
+linear-gradient(150deg,rgba(221,188,78,.05) 1px,transparent 1px);background-size:auto,32px 32px,32px 32px}
+.mn-hero:after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(to top,rgba(2,48,35,.45),transparent)}
+.mn-hero-art{position:absolute;right:-8px;bottom:-6px;width:66%;height:auto;z-index:1;filter:drop-shadow(0 10px 14px rgba(0,0,0,.18))}
+.mn-hero-copy{position:absolute;z-index:3;left:28px;top:78px}
+.mn-hero h1{margin:0;color:white;font-family:Georgia,"Times New Roman",serif;font-size:52px;line-height:.95;letter-spacing:-.02em;text-shadow:0 2px 8px rgba(0,0,0,.16)}
 .mn-quick-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;position:relative;z-index:4;margin:-58px 20px 18px}
 .mn-quick-card{min-height:116px;border:0;border-radius:24px;background:#fffef9;box-shadow:0 12px 25px rgba(34,66,53,.13);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#0b3d30;font-weight:800;text-align:center;padding:12px}
 .mn-quick-icon{width:45px;height:45px;display:grid;place-items:center;color:#0b7654}.mn-quick-icon svg{width:38px;height:38px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -47,7 +47,7 @@ border-radius:50% 50% 0 0}
 .mn-row-title{font-weight:800;line-height:1.35;overflow-wrap:anywhere}.mn-row-meta{font-size:11.5px;color:#858d88;margin-top:4px}.mn-surah-num{width:38px;height:38px;border-radius:50%;background:#edf5ef;color:#0b6a4e;display:grid;place-items:center;font-weight:800}
 .mn-reader{background:#fffef9;border-radius:20px;padding:10px;box-shadow:var(--shadow)}
 .mn-verse{padding:16px 4px;border-bottom:1px solid #eee9df}.mn-arabic{direction:rtl;text-align:right;font-family:"Traditional Arabic","Noto Naskh Arabic","Amiri",serif;font-size:var(--arabic);line-height:1.95;color:#173e33}.mn-translation{font-size:14px;color:#51615a;line-height:1.6;margin-top:8px}.mn-verse-num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#edf5ef;color:#0b6a4e;font:11px system-ui;direction:ltr}
-.mn-pdf-pages{display:grid;grid-template-columns:1fr;gap:12px}.mn-pdf-page{background:#f2efe7;border-radius:14px;padding:7px;overflow:hidden}.mn-pdf-page canvas{display:block;width:100%;height:auto;background:white}.mn-pageno{text-align:center;font-size:10px;color:#8d938f;padding:2px 0 6px}
+.mn-pdf-pages{display:grid;grid-template-columns:1fr;gap:12px}.mn-pdf-page{background:#f2efe7;border-radius:14px;padding:5px;overflow:hidden}.mn-pdf-page canvas{display:block;width:100%;height:auto;background:white}
 .mn-html-reader{background:white;border-radius:18px;overflow:hidden}.mn-html-reader iframe{display:block;width:100%;min-height:680px;border:0}
 .mn-prayer-list{display:grid;grid-template-columns:1fr;gap:9px}.mn-prayer{display:flex;justify-content:space-between;align-items:center;background:#fffef9;border-radius:17px;padding:15px 16px;box-shadow:0 5px 16px rgba(30,65,51,.05)}.mn-prayer span{font-size:20px;font-weight:900;color:#0b5d43}
 .mn-bottom-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:50;width:min(100%,860px);display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,254,249,.96);border-top:1px solid #e9e3d8;padding:7px 10px max(7px,env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(30,65,51,.07);backdrop-filter:blur(16px)}

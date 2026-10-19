@@ -564,9 +564,13 @@ def collect(name, root):
                 raw_title=ba_titles.get(p.name.lower(),"")
                 # Show Indonesian PDFs, plus Arabic-only books that have no Indonesian PDF.
                 hidden = lang not in {"Indonesia","Arab"} or (lang=="Arab" and p.name.lower() in ba_arab_with_id)
+                if not raw_title:
+                    raw_title=pdf_title(p,p.stem)
+                    print("[baalwi-fallback-title]",str(p.relative_to(root)),"=>",normalize_title_text(raw_title))
                 title=normalize_title_text(raw_title)
+                # Never expose an unclear/foreign-only title to the user.
                 if not title_is_clear(title) or mostly_arabic(title):
-                    title="Kitab BaAlwi"
+                    hidden=True
             elif name=="khulasah":
                 key=p.stem.upper()
                 raw_title=KHULASAH_ID_TITLES.get(key,"")
@@ -600,7 +604,8 @@ def collect(name, root):
     visible=[e for e in pdfs if not e.get("hidden")]
     generic=[e for e in visible if e["title"] in {"Kitab BaAlwi","Bacaan Al-Khulasah"}]
     bad=[e for e in visible if not title_is_clear(e["title"]) or mostly_arabic(e["title"]) or any(x in e["title"] for x in ["�","Ã","Â","â€"])]
-    print("[title-audit]",name,"total",len(pdfs),"visible",len(visible),"hidden",len(pdfs)-len(visible),"generic",len(generic),"bad",len(bad))
+    unresolved=[e for e in pdfs if e.get("hidden") and not e.get("title")]
+    print("[title-audit]",name,"total",len(pdfs),"visible",len(visible),"hidden",len(pdfs)-len(visible),"generic",len(generic),"bad",len(bad),"unresolved-hidden",len(unresolved))
     if bad:
         print("[title-audit-bad]",[(e["title"],e.get("rawTitle",""),e.get("sourcePath","")) for e in bad[:25]])
         raise RuntimeError("Unreadable visible titles remain in "+name)

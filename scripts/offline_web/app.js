@@ -33,48 +33,35 @@ async function boot(){
   C=await fetch(local('catalog.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('catalog '+r.status);return r.json()});
   Q=await fetch(local('quran/index.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('quran '+r.status);return r.json()});
   renderHome();
- }catch(e){setHtml('<div class="mn-empty"><h3>Data offline gagal dimuat</h3><p>'+esc(e.message)+'</p></div>')}
+ }catch(e){setHtml('<div class="mn-empty"><h3>Data gagal dimuat</h3><p>'+esc(e.message)+'</p></div>')}
 }
 
 function menuCard(type,title,desc,go){
- return '<button class="mn-menu-card" data-go="'+go+'"><div class="mn-menu-icon">'+icon(type)+'</div><h3>'+title+'</h3><p>'+desc+'</p></button>';
+ return '<button class="mn-menu-card" data-go="'+go+'"><div class="mn-menu-icon">'+icon(type)+'</div><h3>'+title+'</h3><div class="mn-card-chevron">›</div></button>';
 }
 
 function renderHome(){
  setNav('home');
- const total=allEntries().length;
  setHtml(
  '<section class="mn-hero">'+
-   '<div class="mn-hero-kicker">MAJELIS TA\'LIM QIROATUL QUR\'AN</div>'+
-   '<h1>Majelis<br>Mengaji</h1>'+
-   '<div class="mn-quick">'+
-     '<button data-go="quran">Al-Qur\'an</button>'+
-     '<button data-go="tahlil">Yasin & Tahlil</button>'+
-     '<button data-go="maulid">Maulid & Ratib</button>'+
-   '</div>'+
-   '<div class="mn-guidance">'+
-     '<div class="mn-guidance-mark">م</div>'+
-     '<small>DI BAWAH ASUHAN</small>'+
-     '<strong>Alhabib Ahmad bin Alwi Alkaff<br><span style="color:#e7c55d;font-size:12px">dan</span><br>Habib Husein Al-Khered</strong>'+
-   '</div>'+
+   '<div class="mn-hero-overlay"></div>'+
+   '<div class="mn-hero-copy"><h1>Majelis<br>Mengaji</h1></div>'+
  '</section>'+
- '<div class="mn-section-head"><h2>Menu Utama</h2><p>Pilih bacaan</p></div>'+
- '<div class="mn-menu-grid">'+
-   menuCard('book','Al-Qur\'an','114 surah • Arab • Terjemahan','quran')+
-   menuCard('moon','Surat Yasin','Bacaan Yasin lengkap','yasin')+
-   menuCard('beads','Tahlil','Tahlil dan doa lengkap','tahlil')+
-   menuCard('star','Simtud Duror','Maulid Simthud Duror','simtud')+
-   menuCard('spark','Maulid & Ratib','Barzanji, Diba\', Burdah, Ratib','maulid')+
-   menuCard('clock','Jadwal Sholat','Perhitungan Palembang offline','shalat')+
-   menuCard('library','BaAlwi','Koleksi kitab lokal','baalwi')+
-   menuCard('spark','Al-Khulasah','Dzikir, wirid dan doa','khulasah')+
+ '<div class="mn-quick-cards">'+
+   '<button class="mn-quick-card" data-go="quran"><div class="mn-quick-icon">'+icon('book')+'</div><span>Al-Qur\'an</span></button>'+
+   '<button class="mn-quick-card" data-go="tahlil"><div class="mn-quick-icon">'+icon('beads')+'</div><span>Yasin & Tahlil</span></button>'+
+   '<button class="mn-quick-card" data-go="maulid"><div class="mn-quick-icon">'+icon('library')+'</div><span>Maulid & Ratib</span></button>'+
  '</div>'+
- '<div class="mn-section-head"><h2 style="font-size:21px">Koleksi Bacaan</h2></div>'+
- '<div class="mn-offline-stack">'+
-   '<div class="mn-offline-card"><strong>'+Q.length+' Surah Al-Qur\'an</strong><span>Al-Qur'an lengkap</span></div>'+
-   '<div class="mn-offline-card"><strong>'+C.sources.baalwi.pdfs.length+' Kitab BaAlwi</strong><span>Koleksi kitab</span></div>'+
-   '<div class="mn-offline-card"><strong>'+C.sources.khulasah.pdfs.length+' Bacaan Al-Khulasah</strong><span>PDF lokal</span></div>'+
-   '<div class="mn-offline-card"><strong>'+total+' Entri Bacaan</strong><span>Koleksi bacaan</span></div>'+
+ '<div class="mn-section-head"><h2>Menu Utama</h2></div>'+
+ '<div class="mn-menu-grid">'+
+   menuCard('book','Al-Qur\'an','', 'quran')+
+   menuCard('moon','Surat Yasin','', 'yasin')+
+   menuCard('beads','Tahlil','', 'tahlil')+
+   menuCard('star','Simtud Duror','', 'simtud')+
+   menuCard('library','Maulid & Ratib','', 'maulid')+
+   menuCard('clock','Jadwal Sholat','', 'shalat')+
+   menuCard('library','BaAlwi','', 'baalwi')+
+   menuCard('book','Al-Khulasah','', 'khulasah')+
  '</div>'
  );
  bindGo();
@@ -98,6 +85,22 @@ function route(r){
  if(r==='baalwi')return renderList('Koleksi BaAlwi',C.sources.baalwi.pdfs,'home');
  if(r==='khulasah')return renderList('Al-Khulasah',C.sources.khulasah.pdfs,'home');
  if(r==='shalat')return renderPrayer();
+ if(r==='search')return renderGlobalSearch();
+}
+
+function renderGlobalSearch(){
+ setNav('home');
+ const entries=allEntries();
+ setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>Cari Bacaan</h2></div><input class="mn-search" id="search" placeholder="Cari judul…"><div class="mn-list" id="list"></div>');
+ $('#back').onclick=renderHome;
+ const draw=()=>{
+  const q=$('#search').value.toLowerCase().trim();
+  if(!q){$('#list').innerHTML='';return}
+  const f=entries.filter(e=>(displayTitle(e)+' '+(e.sourcePath||'')).toLowerCase().includes(q)).slice(0,80);
+  $('#list').innerHTML=f.length?f.map(row).join(''):'<div class="mn-empty">Tidak ada hasil.</div>';
+  bindRows();
+ };
+ $('#search').oninput=draw;setTimeout(()=>$('#search').focus(),50);
 }
 
 function renderKeyword(title,keys,nav){
@@ -108,10 +111,9 @@ function renderKeyword(title,keys,nav){
 
 function row(e){
  const ico=e.type==='html'?'star':'file';
- const meta=sourceName(e)+(e.lang?' • '+e.lang:'');
  return '<div class="mn-row" role="button" tabindex="0" data-open="'+encodeURIComponent(JSON.stringify(e))+'">'+
    '<div class="mn-row-icon">'+icon(ico)+'</div>'+
-   '<div><div class="mn-row-title">'+esc(displayTitle(e))+'</div><div class="mn-row-meta">'+esc(meta)+'</div></div>'+
+   '<div><div class="mn-row-title">'+esc(displayTitle(e))+'</div></div>'+
    '<div class="mn-chevron">›</div>'+
  '</div>';
 }
@@ -127,8 +129,7 @@ function renderList(title,entries,nav='home'){
  currentList={title,entries,nav};setNav(nav);
  setHtml(
   '<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(title)+'</h2></div>'+
-  '<input class="mn-search" id="search" placeholder="Cari judul bacaan…">'+
-  '<span class="mn-badge">'+entries.length+' bacaan</span>'+
+  '<input class="mn-search" id="search" placeholder="Cari bacaan…">'+
   '<div class="mn-list" id="list"></div>'
  );
  $('#back').onclick=renderHome;
@@ -152,7 +153,7 @@ function openHtml(e){
 }
 
 async function openPdf(e){
- setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(displayTitle(e))+'</h2></div><div class="mn-reader"><div id="pdfpages" class="mn-pdf-pages"><div class="mn-empty">Memuat kitab offline…</div></div></div>');
+ setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(displayTitle(e))+'</h2></div><div class="mn-reader"><div id="pdfpages" class="mn-pdf-pages"><div class="mn-empty">Memuat kitab…</div></div></div>');
  $('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav);
  try{
   pdfDoc=await pdfjsLib.getDocument({url:local(e.path),disableRange:true,disableStream:true}).promise;
@@ -210,7 +211,7 @@ function renderPrayer(){
  const times=prayTimes(new Date());
  setHtml(
   '<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>Jadwal Sholat Palembang</h2></div>'+
-  '<div class="mn-section-head" style="margin-top:6px"><h2 style="font-size:24px">Jadwal Hari Ini</h2><p>Dihitung langsung di HP, tanpa internet</p></div>'+
+  '<div class="mn-section-head" style="margin-top:6px"><h2 style="font-size:24px">Jadwal Hari Ini</h2></div>'+
   '<div class="mn-prayer-list">'+Object.entries(times).map(([k,v])=>'<div class="mn-prayer"><b>'+k+'</b><span>'+v+'</span></div>').join('')+'</div>'
  );
  $('#back').onclick=renderHome;
@@ -227,6 +228,5 @@ function prayTimes(date){
 }
 
 document.addEventListener('click',e=>{const n=e.target.closest('.mn-nav');if(n)route(n.dataset.nav)});
-$('#fontQuick').onclick=()=>{arabSize=arabSize>=44?30:arabSize+4};
-$('#nightQuick').onclick=()=>document.documentElement.classList.toggle('mn-dark');
+const topSearch=$('#topSearch');if(topSearch)topSearch.onclick=()=>route('search');
 boot();

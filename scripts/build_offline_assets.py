@@ -383,31 +383,203 @@ def pdf_title(path, fallback):
         pass
     return "Kitab " + stem if _looks_code_title(stem) else stem
 
+KHULASAH_ID_TITLES = {
+"A1":"Dzikir setelah Subuh",
+"A2":"Wirid Syekh Abu Bakar bin Salim",
+"A3":"Al-Wird Al-Lathif",
+"A4":"Surah Yasin",
+"A5":"Doa setelah Surah Yasin dan Wirid Imam Abu Bakar As-Sakran",
+"A6":"Wirid Imam An-Nawawi",
+"A7":"Doa setelah Shalat Dhuha dan Doa Istikharah",
+"A8":"Niat Belajar dan Mengajar serta Doa Persaudaraan karena Allah",
+"B1":"Dzikir setelah Shalat",
+"C1":"Doa Bangun Tidur",
+"C2":"Akhir Surah Ali 'Imran",
+"C3":"Doa setelah Wudhu dan Pembukaan Tahajud",
+"C4":"Dzikir Akhir Malam setelah Witir",
+"C5":"Doa dengan Asmaul Husna",
+"C6":"Qasidah Imam Abu Bakar Al-Adni",
+"C7":"Qasidah An-Nafhah Al-'Anbariyyah",
+"C8":"Qasidah Ya Arhamar Rahimin dan Qad Kafani",
+"C9":"Doa Habib Muhammad Al-Haddar",
+"C10":"Wirid Syekh Abu Bakar bin Salim",
+"C11":"Beberapa Bacaan Istighfar",
+"C12":"Doa Keluar Rumah dan Menuju Masjid",
+"C13":"Dzikir Sebelum Shalat Subuh",
+"D1":"Al-Wird Al-Lathif",
+"D2":"Beberapa Bacaan Istighfar",
+"D3":"Ratib Habib Umar bin Abdurrahman Al-Attas",
+"D4":"Ratib Habib Abdullah bin Alawi Al-Haddad",
+"E1":"Surah Al-Waqi'ah",
+"E2":"Doa setelah Surah Al-Waqi'ah",
+"E3":"Hizib Al-Bahr Imam Asy-Syadzili",
+"F1":"Hizib An-Nashr Imam Al-Haddad",
+"G1":"Doa Shalat Tasbih",
+"G2":"Doa Perjalanan",
+"G3":"Niat Belajar dan Mengajar serta Doa Persaudaraan karena Allah",
+"G4":"Manzhumah Al-Mashrab Al-Ahna",
+"G5":"Penutup Qasidah At-Ta'iyah Imam Al-Haddad",
+"G6":"Doa Penutup Majelis dan Pelajaran",
+"H1":"Dzikir Malam dan Hari Jumat",
+"H2":"Surah Al-Kahfi",
+"H3":"Surah Ad-Dukhan",
+"H4":"Surah Al-Muzzammil",
+"H5":"Surah Al-Buruj",
+"H6":"Kumpulan Surah Pendek",
+"H7":"Qasidah Ilahi Nas'aluka bil-Ismil A'zham",
+"H8":"Qasidah Qad Kafani 'Ilmu Rabbi",
+"H9":"Shalawat Ibrahimiyah",
+"H10":"Shalawat Tajiyah Syekh Abu Bakar bin Salim",
+"H11":"Wirid Syekh Abu Bakar bin Salim",
+"H12":"Qasidah Ya Rabbana Ya Rabbana",
+"H13":"Dzikir setelah Ashar Hari Jumat",
+"H14":"Shalawat Tajiyah Syekh Abu Bakar bin Salim",
+"H15":"Beberapa Bacaan Shalawat Nabi",
+"H16":"Wirid Syekh Abu Bakar bin Salim",
+"H17":"Beberapa Bacaan Shalawat Nabi",
+"H18":"Doa Penutup Majelis dan Pelajaran",
+"I1":"Wirid Imam Abu Bakar As-Sakran",
+"I2":"Wirid Imam An-Nawawi",
+"I3":"Beberapa Dzikir setelah Isya",
+"I4":"Surah As-Sajdah",
+"I5":"Surah Al-Mulk",
+"I6":"Doa Sujud Tilawah dan Sujud Syukur",
+"I7":"Doa Sebelum Tidur"
+}
+
+def load_baalwi_exact_titles(root):
+    dbs=[p for p in root.rglob("*") if p.is_file() and p.name=="ba_alwi_v4_4_1.sqlite"]
+    if not dbs:
+        return {},set()
+    db=dbs[0]
+    conn=sqlite3.connect("file:"+str(db)+"?mode=ro",uri=True)
+    rows=list(conn.execute("""
+        select mp.id,
+               mp.file_name_arabic,mp.file_name_english,mp.file_name_indonesian,
+               mp.file_name_french,mp.file_name_urdu,mp.file_name_malayalam,
+               mp.file_name_swahili,mp.file_name_turkish,mp.file_name_german,
+               mp.file_name_portuguese,mp.file_name_spanish,
+               t.title_indonesian,t.title_english,t.title_arabic,
+               p.title_indonesian,p.title_english,
+               r.sort_order,t.id
+        from ba_master_pdf mp
+        join ba_title_pdf_relation r on r.pdf_id=mp.id
+        join ba_titles t on t.title_id=r.title_id
+        left join ba_titles p on cast(p.title_id as text)=cast(t.parent_title_id as text)
+        order by mp.id,r.sort_order,t.id
+    """))
+    conn.close()
+
+    groups={}
+    for row in rows:
+        pid=row[0]
+        g=groups.setdefault(pid,{"files":set(),"children":[],"parents":[],"ind_file":None,"arab_file":None})
+        filevals=row[1:12]
+        for fv in filevals:
+            if fv and str(fv).strip():
+                g["files"].add(Path(str(fv)).name.lower())
+        if row[3]: g["ind_file"]=Path(str(row[3])).name.lower()
+        if row[1]: g["arab_file"]=Path(str(row[1])).name.lower()
+        child=normalize_title_text(row[12])
+        parent=normalize_title_text(row[15])
+        if title_is_clear(child) and not mostly_arabic(child):
+            g["children"].append(child)
+        if title_is_clear(parent) and not mostly_arabic(parent):
+            g["parents"].append(parent)
+
+    title_map={}
+    arabic_has_indonesian=set()
+    for pid,g in groups.items():
+        children=list(dict.fromkeys(g["children"]))
+        parents=list(dict.fromkeys(g["parents"]))
+        title=""
+        if len(children)==1:
+            title=children[0]
+        elif len(children)>1 and len(parents)==1:
+            title=parents[0]
+        elif children:
+            # For a PDF containing several sub-bacaan, choose a concise common parent if available.
+            title=parents[0] if parents else children[0]
+        elif parents:
+            title=parents[0]
+        if not title:
+            title="Kitab BaAlwi"
+        for fn in g["files"]:
+            title_map[fn]=title
+        if g["arab_file"] and g["ind_file"]:
+            arabic_has_indonesian.add(g["arab_file"])
+    print("[baalwi-exact-map]",len(title_map),"file names","arabic-with-indonesian",len(arabic_has_indonesian))
+    return title_map,arabic_has_indonesian
+
+def detect_pdf_language(path):
+    low=str(path).lower().replace("\\","/")
+    stem=path.stem.lower()
+    if "/indonesian_pdf/" in low or stem.endswith("_in") or stem.endswith("_id"):
+        return "Indonesia"
+    if "/english_pdf/" in low or stem.endswith("_en"):
+        return "English"
+    if "/spanish_pdf/" in low or stem.endswith("_sp"):
+        return "Spanish"
+    if "/malayalam_pdf/" in low or stem.endswith("_ml"):
+        return "Malayalam"
+    if "/french_pdf/" in low or stem.endswith("_fr"):
+        return "French"
+    if "/urdu_pdf/" in low or stem.endswith("_ur"):
+        return "Urdu"
+    if "/swhaili_pdf/" in low or "/swahili_pdf/" in low or stem.endswith("_sw"):
+        return "Swahili"
+    if "/turkish_pdf/" in low or stem.endswith("_tr"):
+        return "Turkish"
+    if "/german_pdf/" in low or stem.endswith("_de"):
+        return "German"
+    if "/portuguese_pdf/" in low or stem.endswith("_pt"):
+        return "Portuguese"
+    if "/arabic_pdf/" in low:
+        return "Arab"
+    return "Arab"
+
 def collect(name, root):
     base=ASSETS/"library"/name
     usedp={}; useda={}
     pdfs=[]; audios=[]; htmls=[]
     files=[p for p in root.rglob("*") if p.is_file()]
-    debug_sqlite_catalog(root,name)
-    title_map=load_sqlite_title_map(root)
     print("[scan]",name,len(files),"files")
-    sample_pdfs=[p for p in files if p.suffix.lower()==".pdf"][:40]
-    for sp in sample_pdfs:
-        print("[pdf-sample]",name,str(sp.relative_to(root)), "mapped=", mapped_title_for_file(sp,title_map))
+
+    ba_titles={}
+    ba_arab_with_id=set()
+    if name=="baalwi":
+        ba_titles,ba_arab_with_id=load_baalwi_exact_titles(root)
+
     seq=0
     for p in files:
         ext=p.suffix.lower()
         if ext==".pdf":
             seq+=1
             rel=copy_unique(p,base/"pdf",usedp)
-            mapped=mapped_title_for_file(p,title_map)
-            raw_title=mapped or pdf_title(p,p.stem)
-            title=final_display_title(raw_title,name,seq)
-            lang=""
-            low=p.stem.lower()
-            if low.endswith("_in") or low.endswith("_id"): lang="Indonesia"
-            elif low.endswith("_en"): lang="English"
-            elif low.endswith("_ar"): lang="Arab"
+            lang=detect_pdf_language(p)
+            hidden=False
+            raw_title=""
+
+            if name=="baalwi":
+                raw_title=ba_titles.get(p.name.lower(),"")
+                # Show Indonesian PDFs, plus Arabic-only books that have no Indonesian PDF.
+                hidden = lang not in {"Indonesia","Arab"} or (lang=="Arab" and p.name.lower() in ba_arab_with_id)
+                title=normalize_title_text(raw_title)
+                if not title_is_clear(title) or mostly_arabic(title):
+                    title="Kitab BaAlwi"
+            elif name=="khulasah":
+                key=p.stem.upper()
+                raw_title=KHULASAH_ID_TITLES.get(key,"")
+                title=normalize_title_text(raw_title)
+                hidden=False
+                lang="Indonesia"
+                if not title_is_clear(title):
+                    title="Bacaan Al-Khulasah"
+            else:
+                mapped=load_sqlite_title_map(root) if False else ""
+                raw_title=pdf_title(p,p.stem)
+                title=final_display_title(raw_title,name,seq)
+
             pdfs.append({
                 "title":title,
                 "rawTitle":normalize_title_text(raw_title),
@@ -416,22 +588,25 @@ def collect(name, root):
                 "type":"pdf",
                 "sourcePath":str(p.relative_to(root))[:300],
                 "lang":lang,
-                "hidden": bool(lang=="English")
+                "hidden":bool(hidden)
             })
         elif ext in AUDIO_EXT:
             rel=copy_unique(p,base/"audio",useda)
             audios.append({"title":slug(p.stem,120),"path":"library/%s/audio/%s"%(name,rel),"source":name,"type":"audio","sourcePath":str(p.relative_to(root))[:300]})
+
     pdfs.sort(key=lambda x:x["title"].lower())
     audios.sort(key=lambda x:x["title"].lower())
     htmls.sort(key=lambda x:x["title"].lower())
-
     visible=[e for e in pdfs if not e.get("hidden")]
-    bad=[e for e in visible if not title_is_clear(e["title"]) or any(x in e["title"] for x in ["�","Ã","Â","â€"])]
-    generic=[e for e in visible if e["title"].startswith("Kitab "+source_label(name)+" Bagian ")]
-    print("[title-audit]",name,"visible",len(visible),"hidden-English",len(pdfs)-len(visible),"generic",len(generic),"bad",len(bad))
+    generic=[e for e in visible if e["title"] in {"Kitab BaAlwi","Bacaan Al-Khulasah"}]
+    bad=[e for e in visible if not title_is_clear(e["title"]) or mostly_arabic(e["title"]) or any(x in e["title"] for x in ["�","Ã","Â","â€"])]
+    print("[title-audit]",name,"total",len(pdfs),"visible",len(visible),"hidden",len(pdfs)-len(visible),"generic",len(generic),"bad",len(bad))
     if bad:
-        print("[title-audit-bad]",[(e["title"],e.get("rawTitle","")) for e in bad[:25]])
+        print("[title-audit-bad]",[(e["title"],e.get("rawTitle",""),e.get("sourcePath","")) for e in bad[:25]])
         raise RuntimeError("Unreadable visible titles remain in "+name)
+    if name in {"baalwi","khulasah"} and generic:
+        print("[title-generic]",name,[(e["sourcePath"],e["rawTitle"]) for e in generic[:30]])
+        raise RuntimeError("Unmapped visible titles remain in "+name)
 
     return {"pdfs":pdfs,"audios":audios,"html":htmls}
 
@@ -650,7 +825,7 @@ def main():
             "total":len(entries),
             "visible":sum(1 for e in entries if not e.get("hidden")),
             "hiddenEnglish":sum(1 for e in entries if e.get("hidden")),
-            "generic":sum(1 for e in entries if e["title"].startswith("Kitab "+source_label(src)+" Bagian ")),
+            "generic":sum(1 for e in entries if e["title"] in {"Kitab BaAlwi","Bacaan Al-Khulasah"}),
             "titles":[e["title"] for e in entries if not e.get("hidden")]
         }
     (ASSETS/"title_audit.json").write_text(json.dumps(audit,ensure_ascii=False,indent=2),encoding="utf-8")

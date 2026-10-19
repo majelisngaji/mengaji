@@ -1,6 +1,12 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const BASE=(location.hostname==='app.local'&&location.protocol==='https:')?'https://app.local/':(location.origin.replace(/\/$/,'')+'/');
 let C=null,Q=null,pdfDoc=null,arabSize=34,currentList={title:'',entries:[],nav:'home'};
+let nativeBackAction=null;
+window.handleNativeBack=()=>{
+  if(typeof nativeBackAction==='function'){nativeBackAction();return true;}
+  if(typeof renderHome==='function'){renderHome();return true;}
+  return false;
+};
 pdfjsLib.GlobalWorkerOptions.workerSrc=BASE+'vendor/pdf.worker.min.js';
 
 const local=p=>BASE+String(p||'').replace(/^\/+/, '');
@@ -41,6 +47,7 @@ function menuCard(type,title,desc,go){
 }
 
 function renderHome(){
+ nativeBackAction=null;
  setNav('home');
  setHtml(
  '<section class="mn-hero">'+
@@ -100,6 +107,7 @@ function route(r){
 }
 
 function renderGlobalSearch(){
+ nativeBackAction=renderHome;
  setNav('home');
  const entries=allEntries();
  setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>Cari Bacaan</h2></div><input class="mn-search" id="search" placeholder="Cari judul…"><div class="mn-list" id="list"></div>');
@@ -137,6 +145,7 @@ function bindRows(){
 }
 
 function renderList(title,entries,nav='home'){
+ nativeBackAction=renderHome;
  currentList={title,entries,nav};setNav(nav);
  setHtml(
   '<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(title)+'</h2></div>'+
@@ -156,14 +165,57 @@ function renderList(title,entries,nav='home'){
 function openEntry(e){return e.type==='html'?openHtml(e):openPdf(e)}
 
 function openHtml(e){
+ nativeBackAction=()=>renderList(currentList.title,currentList.entries,currentList.nav);
  setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(e.title)+'</h2></div><div class="mn-html-reader"><iframe id="rawframe" scrolling="no" src="'+local(e.path)+'"></iframe></div>');
- $('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav);
+ $('#back').onclick=nativeBackAction;
+
  const f=$('#rawframe');
- const fit=()=>{try{const d=f.contentDocument;const h=Math.max(d.body?.scrollHeight||0,d.documentElement?.scrollHeight||0);if(h>0)f.style.height=(h+24)+'px'}catch(_){}};
- f.onload=()=>{fit();setTimeout(fit,250);setTimeout(fit,1000)};
+ const fixReader=()=>{
+  try{
+   const d=f.contentDocument;
+   if(!d)return;
+   let st=d.getElementById('mn-force-reader-style');
+   if(!st){
+    st=d.createElement('style');
+    st.id='mn-force-reader-style';
+    st.textContent=
+      'html,body{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:10px 8px 28px!important;overflow-x:hidden!important;box-sizing:border-box!important;background:#fff!important;}'+
+      '*,*:before,*:after{box-sizing:border-box!important;max-width:100%!important;}'+
+      'body,div,p,section,article,main{min-width:0!important;white-space:normal!important;overflow-wrap:break-word!important;word-wrap:break-word!important;}'+
+      'img,svg,video,canvas{max-width:100%!important;height:auto!important;}'+
+      'table{width:100%!important;max-width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;}'+
+      'td,th{white-space:normal!important;overflow-wrap:break-word!important;}'+
+      'pre,code{white-space:pre-wrap!important;overflow-wrap:anywhere!important;}'+
+      '[dir="rtl"],.arabic,.arab,.ayat,.teks-arab{direction:rtl!important;text-align:right!important;white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;line-height:1.95!important;}';
+    (d.head||d.documentElement).appendChild(st);
+   }
+   const h=Math.max(
+    d.body?.scrollHeight||0,
+    d.documentElement?.scrollHeight||0,
+    d.body?.offsetHeight||0,
+    d.documentElement?.offsetHeight||0
+   );
+   if(h>0)f.style.height=(h+36)+'px';
+  }catch(_){}
+ };
+ f.onload=()=>{
+  fixReader();
+  setTimeout(fixReader,150);
+  setTimeout(fixReader,500);
+  setTimeout(fixReader,1200);
+  try{
+   const d=f.contentDocument;
+   if(d&&window.ResizeObserver){
+    const ro=new ResizeObserver(fixReader);
+    ro.observe(d.documentElement);
+    if(d.body)ro.observe(d.body);
+   }
+  }catch(_){}
+ };
 }
 
 async function openPdf(e){
+ nativeBackAction=()=>renderList(currentList.title,currentList.entries,currentList.nav);
  setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(displayTitle(e))+'</h2></div><div class="mn-reader"><div id="pdfpages" class="mn-pdf-pages"><div class="mn-empty">Memuat kitab…</div></div></div>');
  $('#back').onclick=()=>renderList(currentList.title,currentList.entries,currentList.nav);
  try{
@@ -191,6 +243,7 @@ async function openPdf(e){
 }
 
 function renderQuran(){
+ nativeBackAction=renderHome;
  setNav('quran');
  setHtml('<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>Al-Qur\'an</h2></div><input class="mn-search" id="search" placeholder="Cari surah…"><div class="mn-list mn-quran-list" id="qlist"></div>');
  $('#back').onclick=renderHome;
@@ -204,6 +257,7 @@ function renderQuran(){
 }
 
 async function openSurah(n){
+ nativeBackAction=renderQuran;
  const s=await fetch(local('quran/'+n+'.json'),{cache:'no-store'}).then(r=>r.json());
  localStorage.setItem('lastSurah',n);
  setHtml(
@@ -218,6 +272,7 @@ async function openSurah(n){
 }
 
 function renderPrayer(){
+ nativeBackAction=renderHome;
  setNav('home');
  const times=prayTimes(new Date());
  setHtml(

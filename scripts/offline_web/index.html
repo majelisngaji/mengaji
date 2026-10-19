@@ -3,24 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f8f6ed">
+<meta name="theme-color" content="#f7f3e7">
 <title>Majelis Mengaji</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="appbar">
-  <div class="logo-mini">م</div>
-  <div class="headcopy"><div class="apptitle">Majelis Mengaji</div><div class="appsub">Majelis Ta'lim Anwarul Habib</div></div>
-  <button class="headbtn" id="fontQuick">T</button>
-  <button class="headbtn" id="nightQuick">☾</button>
-</header>
-<main class="page" id="content"><div class="empty">Memuat bacaan offline…</div></main>
-<nav class="bottom">
-  <button class="nav active" data-nav="home"><b>⌂</b><span>Beranda</span></button>
-  <button class="nav" data-nav="quran"><b>▣</b><span>Al-Qur'an</span></button>
-  <button class="nav" data-nav="tahlil"><b>◉</b><span>Tahlil</span></button>
-  <button class="nav" data-nav="simtud"><b>☆</b><span>Simtud</span></button>
-</nav>
+<div id="majelis-ngaji-app" class="mn-shell">
+  <header class="mn-topbar">
+    <div class="mn-brand">
+      <img class="mn-logo" src="/brand/logo.webp" alt="Majelis Mengaji">
+      <div class="mn-brand-copy">
+        <div class="mn-brand-title">Majelis Mengaji</div>
+        <div class="mn-brand-sub">Ta'lim Qiroatul Qur'an</div>
+      </div>
+    </div>
+    <div class="mn-top-actions">
+      <button class="mn-icon-btn" id="fontQuick" aria-label="Ukuran huruf">T</button>
+      <button class="mn-icon-btn" id="nightQuick" aria-label="Mode malam">☾</button>
+    </div>
+  </header>
+
+  <main class="mn-page" id="content">
+    <div class="mn-empty">Memuat bacaan offline…</div>
+  </main>
+
+  <nav class="mn-bottom-nav" aria-label="Navigasi utama">
+    <button class="mn-nav active" data-nav="home"><span class="mn-nav-ico">⌂</span><span>Beranda</span></button>
+    <button class="mn-nav" data-nav="quran"><span class="mn-nav-ico">▣</span><span>Al-Qur'an</span></button>
+    <button class="mn-nav" data-nav="tahlil"><span class="mn-nav-ico">◉</span><span>Tahlil</span></button>
+    <button class="mn-nav" data-nav="simtud"><span class="mn-nav-ico">☆</span><span>Simtud</span></button>
+  </nav>
+</div>
 <script src="/vendor/pdf.min.js"></script>
 <script src="/app.js"></script>
 </body>

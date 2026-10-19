@@ -64,6 +64,26 @@ jobs:
           grep -q 'class="mn-row"' app/src/main/assets/app.js
           grep -q 'class="mn-pdf-pages"' app/src/main/assets/app.js
 
+      - name: Render real home preview
+        run: |
+          python3 -m http.server 8080 --directory app/src/main/assets > /tmp/majelis-preview.log 2>&1 &
+          SERVER_PID=$!
+          sleep 2
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME_BIN" ]; then
+            echo "ERROR: Chrome/Chromium not available for real preview"
+            kill $SERVER_PID || true
+            exit 1
+          fi
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars \
+            --window-size=430,932 --force-device-scale-factor=1 \
+            --virtual-time-budget=8000 \
+            --screenshot=Majelis_Mengaji_v2.3.0_PREVIEW.png \
+            http://127.0.0.1:8080/index.html
+          kill $SERVER_PID || true
+          test -s Majelis_Mengaji_v2.3.0_PREVIEW.png
+          ls -lh Majelis_Mengaji_v2.3.0_PREVIEW.png
+
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
 
@@ -83,18 +103,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.2.0.apk
-          gh release delete offline-v2.2.0 -y --cleanup-tag || true
-          gh release create offline-v2.2.0 Majelis_Mengaji_OFFLINE_v2.2.0.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.3.0.apk
+          gh release delete offline-v2.3.0 -y --cleanup-tag || true
+          gh release create offline-v2.3.0 Majelis_Mengaji_OFFLINE_v2.3.0.apk Majelis_Mengaji_v2.3.0_PREVIEW.png \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.2.0" \
-            --notes "Majelis Mengaji v2.2.0. Tampilan mengikuti mockup final: header logo + judul + pencarian, hero hijau, tiga kartu cepat, Menu Utama dua kolom, kartu compact dengan chevron, dan navigasi bawah. Teks teknis tidak ditampilkan. Seluruh data bacaan tetap tertanam di aplikasi."
+            --title "Majelis Mengaji OFFLINE v2.3.0" \
+            --notes "v2.3.0 dibangun dari UI mockup final. Release menyertakan screenshot preview nyata yang dirender dari source aplikasi yang sama."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.2.0
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Majelis-Mengaji-OFFLINE-v2.3.0
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            Majelis_Mengaji_v2.3.0_PREVIEW.png
           if-no-files-found: error
           compression-level: 0
           retention-days: 30

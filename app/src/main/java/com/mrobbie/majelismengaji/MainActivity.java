@@ -150,8 +150,22 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        if (webView == null) return;
+
+        webView.evaluateJavascript(
+                "(function(){try{" +
+                "if(window.handleNativeBack){return window.handleNativeBack()?'handled':'home';}" +
+                "return 'home';" +
+                "}catch(e){return 'home';}})();",
+                result -> {
+                    if (result == null || result.contains("home")) {
+                        webView.evaluateJavascript(
+                                "if(window.route){window.route('home');}else{location.href='https://app.local/index.html';}",
+                                null
+                        );
+                    }
+                }
+        );
     }
 
     @Override

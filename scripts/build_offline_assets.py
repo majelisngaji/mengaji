@@ -216,6 +216,30 @@ def mostly_arabic(s):
 def source_label(name):
     return {"baalwi":"BaAlwi","khulasah":"Al-Khulasah"}.get(name,name.replace("_"," ").title())
 
+def debug_sqlite_catalog(root, source_name):
+    dbs=[p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".db",".sqlite",".sqlite3"}]
+    print("[catalog-debug]",source_name,"db-count",len(dbs))
+    for db in dbs:
+        try:
+            conn=sqlite3.connect("file:"+str(db)+"?mode=ro",uri=True)
+            tables=[r[0] for r in conn.execute("select name from sqlite_master where type='table'")]
+            print("[catalog-db]",source_name,db.name,"tables",tables[:30])
+            for table in tables[:20]:
+                try:
+                    info=list(conn.execute('pragma table_info("'+table.replace('"','""')+'")'))
+                    cols=[r[1] for r in info]
+                    print("[catalog-table]",source_name,table,"cols",cols)
+                    if cols:
+                        q='select '+','.join('"'+x.replace('"','""')+'"' for x in cols[:8])+' from "'+table.replace('"','""')+'" limit 8'
+                        rows=list(conn.execute(q))
+                        for row in rows:
+                            print("[catalog-row]",source_name,table,[str(x)[:180] if x is not None else None for x in row])
+                except Exception as e:
+                    print("[catalog-table-warn]",source_name,table,e)
+            conn.close()
+        except Exception as e:
+            print("[catalog-db-warn]",source_name,db,e)
+
 def load_sqlite_title_map(root):
     out={}
     dbs=[p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".db",".sqlite",".sqlite3"}]
@@ -342,8 +366,12 @@ def collect(name, root):
     usedp={}; useda={}
     pdfs=[]; audios=[]; htmls=[]
     files=[p for p in root.rglob("*") if p.is_file()]
+    debug_sqlite_catalog(root,name)
     title_map=load_sqlite_title_map(root)
     print("[scan]",name,len(files),"files")
+    sample_pdfs=[p for p in files if p.suffix.lower()==".pdf"][:40]
+    for sp in sample_pdfs:
+        print("[pdf-sample]",name,str(sp.relative_to(root)), "mapped=", mapped_title_for_file(sp,title_map))
     seq=0
     for p in files:
         ext=p.suffix.lower()

@@ -23,7 +23,7 @@ const icon=n=>{
 function setHtml(x){$('#content').innerHTML=x;window.scrollTo(0,0)}
 function setNav(n){$$('.mn-nav').forEach(x=>x.classList.toggle('active',x.dataset.nav===n))}
 function bindGo(){$$('[data-go]').forEach(x=>x.onclick=()=>route(x.dataset.go))}
-function sourceName(e){if(e.source==='baalwi')return 'BaAlwi';if(e.source==='khulasah')return 'Al-Khulasah';if(e.source==='rawindroid')return 'Maulid';return 'Bacaan Offline'}
+function sourceName(e){if(e.source==='baalwi')return 'BaAlwi';if(e.source==='khulasah')return 'Al-Khulasah';if(e.source==='rawindroid')return 'Maulid';return 'Bacaan'}
 function displayTitle(e){let t=String(e.title||'').trim();const m=t.match(/^Kitab\s+(\d{1,4})(?:_(?:in|id|en|ar))?$/i);return m?'Kitab Koleksi No. '+m[1]:t}
 function allEntries(){let out=[];Object.entries(C.sources).forEach(([k,s])=>{if(k==='rawi_complete')return;out=out.concat(s.pdfs||[],s.html||[])});return out}
 function keyword(keys){return allEntries().filter(e=>{const h=(e.title+' '+(e.sourcePath||'')).toLowerCase();return keys.some(k=>h.includes(k.toLowerCase()))})}
@@ -69,12 +69,12 @@ function renderHome(){
    menuCard('library','BaAlwi','Koleksi kitab lokal','baalwi')+
    menuCard('spark','Al-Khulasah','Dzikir, wirid dan doa','khulasah')+
  '</div>'+
- '<div class="mn-section-head"><h2 style="font-size:21px">Koleksi Offline</h2><p>Seluruh data tersimpan di APK</p></div>'+
+ '<div class="mn-section-head"><h2 style="font-size:21px">Koleksi Bacaan</h2></div>'+
  '<div class="mn-offline-stack">'+
-   '<div class="mn-offline-card"><strong>'+Q.length+' Surah Al-Qur\'an</strong><span>Data lokal tanpa API</span></div>'+
-   '<div class="mn-offline-card"><strong>'+C.sources.baalwi.pdfs.length+' Kitab BaAlwi</strong><span>PDF lokal</span></div>'+
+   '<div class="mn-offline-card"><strong>'+Q.length+' Surah Al-Qur\'an</strong><span>Al-Qur'an lengkap</span></div>'+
+   '<div class="mn-offline-card"><strong>'+C.sources.baalwi.pdfs.length+' Kitab BaAlwi</strong><span>Koleksi kitab</span></div>'+
    '<div class="mn-offline-card"><strong>'+C.sources.khulasah.pdfs.length+' Bacaan Al-Khulasah</strong><span>PDF lokal</span></div>'+
-   '<div class="mn-offline-card"><strong>'+total+' Entri Bacaan</strong><span>Tidak memerlukan internet</span></div>'+
+   '<div class="mn-offline-card"><strong>'+total+' Entri Bacaan</strong><span>Koleksi bacaan</span></div>'+
  '</div>'
  );
  bindGo();
@@ -128,7 +128,7 @@ function renderList(title,entries,nav='home'){
  setHtml(
   '<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>'+esc(title)+'</h2></div>'+
   '<input class="mn-search" id="search" placeholder="Cari judul bacaan…">'+
-  '<span class="mn-badge">'+entries.length+' bacaan offline</span>'+
+  '<span class="mn-badge">'+entries.length+' bacaan</span>'+
   '<div class="mn-list" id="list"></div>'
  );
  $('#back').onclick=renderHome;

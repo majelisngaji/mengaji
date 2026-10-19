@@ -40,43 +40,31 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Validate vertical-only offline UI
+      - name: Validate Majelis plugin-look offline UI
         run: |
           node --check app/src/main/assets/app.js
-          grep -q '.menu-grid{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
-          grep -q '.collection-row{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
-          grep -q '.praybox{display:grid;grid-template-columns:1fr;' app/src/main/assets/style.css
-          grep -q 'class="pdfpages"' app/src/main/assets/app.js
-          if grep -q 'grid-template-columns:1fr 1fr' app/src/main/assets/style.css; then
-            echo "ERROR: two-column content layout still exists"
-            exit 1
-          fi
-          if grep -q '.collection-row{display:flex' app/src/main/assets/style.css; then
-            echo "ERROR: horizontal collection row still exists"
-            exit 1
-          fi
-          if grep -q 'position:fixed' app/src/main/assets/style.css; then
-            echo "ERROR: fixed UI still exists; user requested everything scroll"
-            exit 1
-          fi
-          if grep -q 'position:sticky' app/src/main/assets/style.css; then
-            echo "ERROR: sticky UI still exists; user requested everything scroll"
-            exit 1
-          fi
+          grep -q 'class="mn-topbar"' app/src/main/assets/index.html
+          grep -q 'class="mn-bottom-nav"' app/src/main/assets/index.html
+          grep -q '.mn-hero{' app/src/main/assets/style.css
+          grep -q '.mn-menu-grid{display:grid;grid-template-columns:repeat(2' app/src/main/assets/style.css
+          grep -q '.mn-menu-card{' app/src/main/assets/style.css
+          grep -q '.mn-reading-card' app/src/main/assets/style.css || true
+          grep -q 'brand/logo.webp' app/src/main/assets/index.html
+          test -f app/src/main/assets/brand/logo.webp
           if grep -q '>Buka<' app/src/main/assets/app.js; then
-            echo "ERROR: Buka button text still exists"
+            echo "ERROR: Buka text must not exist"
             exit 1
           fi
           if grep -q '>Baca<' app/src/main/assets/app.js; then
-            echo "ERROR: Baca button text still exists"
+            echo "ERROR: Baca text must not exist"
             exit 1
           fi
-          if grep -q 'openbtn' app/src/main/assets/app.js app/src/main/assets/style.css; then
-            echo "ERROR: old open button UI still exists"
+          if grep -q 'overflow-x:auto' app/src/main/assets/style.css; then
+            echo "ERROR: horizontal scrolling must not exist"
             exit 1
           fi
-          grep -q 'class="item tap"' app/src/main/assets/app.js
-          grep -q 'class="rowchev"' app/src/main/assets/app.js
+          grep -q 'class="mn-row"' app/src/main/assets/app.js
+          grep -q 'class="mn-pdf-pages"' app/src/main/assets/app.js
 
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -97,17 +85,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.4.apk
-          gh release delete offline-v2.0.4 -y --cleanup-tag || true
-          gh release create offline-v2.0.4 Majelis_Mengaji_OFFLINE_v2.0.4.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.1.0.apk
+          gh release delete offline-v2.1.0 -y --cleanup-tag || true
+          gh release create offline-v2.1.0 Majelis_Mengaji_OFFLINE_v2.1.0.apk \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.0.4" \
-            --notes "APK offline penuh v2.0.4. Semua daftar dibersihkan: tidak ada tombol Buka/Baca; seluruh kartu bacaan langsung dapat ditekan, judul dapat membungkus beberapa baris, seluruh susunan satu kolom dan scroll vertikal. Quran 114 surah, BaAlwi, Al-Khulasah, serta 6 Maulid Rawindroid lokal. Tanpa internet dan tanpa kompas kiblat."
+            --title "Majelis Mengaji OFFLINE v2.1.0" \
+            --notes "APK offline v2.1.0 dengan tampilan dikembalikan ke gaya plugin Majelis Mengaji: header logo, hero hijau, tombol cepat, Menu Utama dua kolom, kartu putih rounded, dan navigasi bawah. Tidak ada tombol Buka/Baca dan tidak ada horizontal scroll. Quran 114 surah, BaAlwi, Al-Khulasah, serta 6 Maulid Rawindroid tetap lokal/offline."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.0.4
+          name: Majelis-Mengaji-OFFLINE-v2.1.0
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0

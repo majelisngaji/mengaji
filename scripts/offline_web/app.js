@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const BASE='https://app.local/';
+const BASE=(location.hostname==='app.local'&&location.protocol==='https:')?'https://app.local/':(location.origin.replace(/\/$/,'')+'/');
 let C=null,Q=null,pdfDoc=null,arabSize=34,currentList={title:'',entries:[],nav:'home'};
 pdfjsLib.GlobalWorkerOptions.workerSrc=BASE+'vendor/pdf.worker.min.js';
 
@@ -33,7 +33,7 @@ async function boot(){
   C=await fetch(local('catalog.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('catalog '+r.status);return r.json()});
   Q=await fetch(local('quran/index.json'),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('quran '+r.status);return r.json()});
   renderHome();
- }catch(e){setHtml('<div class="mn-empty"><h3>Data gagal dimuat</h3><p>'+esc(e.message)+'</p></div>')}
+ }catch(e){setHtml('<div class="mn-empty"><h3>Data gagal dimuat</h3></div>')}
 }
 
 function menuCard(type,title,desc,go){
@@ -44,7 +44,18 @@ function renderHome(){
  setNav('home');
  setHtml(
  '<section class="mn-hero">'+
-   '<div class="mn-hero-overlay"></div>'+
+   '<svg class="mn-hero-art" viewBox="0 0 420 280" aria-hidden="true">'+
+     '<defs><linearGradient id="dome" x1="0" x2="1"><stop stop-color="#d8c176"/><stop offset="1" stop-color="#f2df9c"/></linearGradient></defs>'+
+     '<g opacity=".95">'+
+       '<path d="M220 188h160v62H220z" fill="#eadca8"/>'+
+       '<path d="M250 188c0-42 24-72 50-72s50 30 50 72z" fill="url(#dome)"/>'+
+       '<path d="M296 100h8v18h-8z" fill="#e7cc74"/><circle cx="300" cy="98" r="4" fill="#e7cc74"/>'+
+       '<path d="M232 139h12v111h-12zM356 139h12v111h-12z" fill="#e8d596"/>'+
+       '<path d="M229 139c3-20 7-30 9-30s6 10 9 30zM353 139c3-20 7-30 9-30s6 10 9 30z" fill="#e7ca72"/>'+
+       '<rect x="270" y="210" width="60" height="40" rx="26" fill="#0a6248"/>'+
+       '<g fill="#0b6d50" opacity=".92"><circle cx="225" cy="225" r="22"/><circle cx="240" cy="220" r="20"/><circle cx="370" cy="225" r="24"/></g>'+
+     '</g>'+
+   '</svg>'+
    '<div class="mn-hero-copy"><h1>Majelis<br>Mengaji</h1></div>'+
  '</section>'+
  '<div class="mn-quick-cards">'+
@@ -160,7 +171,7 @@ async function openPdf(e){
   const holder=$('#pdfpages');holder.innerHTML='';
   for(let i=1;i<=pdfDoc.numPages;i++){
    const sec=document.createElement('section');sec.className='mn-pdf-page';sec.dataset.page=String(i);
-   sec.innerHTML='<div class="mn-pageno">Halaman '+i+' / '+pdfDoc.numPages+'</div><canvas></canvas>';
+   sec.innerHTML='<canvas></canvas>';
    holder.appendChild(sec);
   }
   const renderPage=async sec=>{
@@ -171,12 +182,12 @@ async function openPdf(e){
     const v=p.getViewport({scale:1.55});
     const c=sec.querySelector('canvas');c.width=Math.floor(v.width);c.height=Math.floor(v.height);
     await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;sec.dataset.rendered='1';
-   }catch(_){sec.dataset.rendered='error';sec.innerHTML='<div class="mn-empty">Halaman gagal dimuat.</div>'}
+   }catch(_){sec.dataset.rendered='error';sec.innerHTML='<div class="mn-empty">Tidak dapat dimuat.</div>'}
   };
   const obs=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting)renderPage(x.target)}),{root:null,rootMargin:'900px 0px',threshold:.01});
   $$('.mn-pdf-page').forEach(sec=>obs.observe(sec));
   const first=$('.mn-pdf-page');if(first)renderPage(first);
- }catch(err){$('.mn-reader').innerHTML='<div class="mn-empty">Bacaan tidak dapat dimuat.<br>'+esc(err.message)+'</div>'}
+ }catch(err){$('.mn-reader').innerHTML='<div class="mn-empty">Tidak dapat dimuat.<br>'+esc(err.message)+'</div>'}
 }
 
 function renderQuran(){
@@ -211,7 +222,7 @@ function renderPrayer(){
  const times=prayTimes(new Date());
  setHtml(
   '<div class="mn-toolbar"><button class="mn-back" id="back">←</button><h2>Jadwal Sholat Palembang</h2></div>'+
-  '<div class="mn-section-head" style="margin-top:6px"><h2 style="font-size:24px">Jadwal Hari Ini</h2></div>'+
+  ''+
   '<div class="mn-prayer-list">'+Object.entries(times).map(([k,v])=>'<div class="mn-prayer"><b>'+k+'</b><span>'+v+'</span></div>').join('')+'</div>'
  );
  $('#back').onclick=renderHome;

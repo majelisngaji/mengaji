@@ -63,6 +63,20 @@ jobs:
             echo "ERROR: sticky UI still exists; user requested everything scroll"
             exit 1
           fi
+          if grep -q '>Buka<' app/src/main/assets/app.js; then
+            echo "ERROR: Buka button text still exists"
+            exit 1
+          fi
+          if grep -q '>Baca<' app/src/main/assets/app.js; then
+            echo "ERROR: Baca button text still exists"
+            exit 1
+          fi
+          if grep -q 'openbtn' app/src/main/assets/app.js app/src/main/assets/style.css; then
+            echo "ERROR: old open button UI still exists"
+            exit 1
+          fi
+          grep -q 'class="item tap"' app/src/main/assets/app.js
+          grep -q 'class="rowchev"' app/src/main/assets/app.js
 
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -83,17 +97,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.3.apk
-          gh release delete offline-v2.0.3 -y --cleanup-tag || true
-          gh release create offline-v2.0.3 Majelis_Mengaji_OFFLINE_v2.0.3.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.0.4.apk
+          gh release delete offline-v2.0.4 -y --cleanup-tag || true
+          gh release create offline-v2.0.4 Majelis_Mengaji_OFFLINE_v2.0.4.apk \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.0.3" \
-            --notes "APK offline penuh v2.0.3. Semua bagian ikut scroll vertikal: header, Menu Utama, Koleksi Offline, daftar surah, daftar kitab, pembaca PDF kontinu, jadwal sholat, dan navigation bawah. Tidak ada fixed/sticky content, tidak ada horizontal scroll, tanpa permission internet, tanpa kompas kiblat."
+            --title "Majelis Mengaji OFFLINE v2.0.4" \
+            --notes "APK offline penuh v2.0.4. Semua daftar dibersihkan: tidak ada tombol Buka/Baca; seluruh kartu bacaan langsung dapat ditekan, judul dapat membungkus beberapa baris, seluruh susunan satu kolom dan scroll vertikal. Quran 114 surah, BaAlwi, Al-Khulasah, serta 6 Maulid Rawindroid lokal. Tanpa internet dan tanpa kompas kiblat."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.0.3
+          name: Majelis-Mengaji-OFFLINE-v2.0.4
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0

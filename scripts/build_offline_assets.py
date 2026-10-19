@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import hashlib
+import html as htmlmod
 import json
 import re
 import shutil
+import sqlite3
 import time
+import unicodedata
 import zipfile
 from pathlib import Path
 from urllib.parse import unquote
@@ -161,6 +164,148 @@ def _clean_title_line(s):
     if re.fullmatch(r"[\d\W_]+",s): return ""
     return s
 
+def normalize_title_text(value):
+    s=htmlmod.unescape(str(value or ""))
+    s=unicodedata.normalize("NFKC",s)
+    if any(x in s for x in ["Ã","Â","â€","â€™","â€œ","â€","�"]):
+        try:
+            fixed=s.encode("latin1",errors="ignore").decode("utf-8",errors="ignore")
+            if fixed and fixed.count("�")<=s.count("�"):
+                s=fixed
+        except Exception:
+            pass
+    s=re.sub(r"[\x00-\x1f\x7f]+"," ",s)
+    s=re.sub(r"\.(pdf|epub|html?|txt)$","",s,flags=re.I)
+    s=s.replace("_"," ")
+    s=re.sub(r"\s+"," ",s).strip(" ._\-|:;")
+    s=re.sub(r"^(?:file|book|kitab)\s*[:#-]?\s*(?=\d)", "", s, flags=re.I)
+    s=re.sub(r"^\d{1,4}\s*[-_.:]\s*", "", s)
+    s=re.sub(r"\s*\((?:en|english)\)\s*$","",s,flags=re.I)
+    s=re.sub(r"\s*[-_. ](?:en|english)\s*$","",s,flags=re.I)
+    return s.strip()
+
+def title_is_clear(s):
+    s=normalize_title_text(s)
+    if not s or len(s)<3 or len(s)>95:
+        return False
+    if any(x in s for x in ["�","Ã","Â","â€","http://","https://","www."]):
+        return False
+    if re.fullmatch(r"\d{1,4}(?:\s+(?:en|in|id|ar))?",s,re.I):
+        return False
+    letters=sum(1 for ch in s if ch.isalpha())
+    marks=sum(1 for ch in s if unicodedata.category(ch).startswith("M"))
+    if letters+marks<3:
+        return False
+    punct=sum(1 for ch in s if not ch.isalnum() and not ch.isspace() and not unicodedata.category(ch).startswith("M"))
+    if punct>max(8,int(len(s)*0.28)):
+        return False
+    if len(s.split())>16:
+        return False
+    return True
+
+def mostly_arabic(s):
+    arab=latin=0
+    for ch in str(s or ""):
+        o=ord(ch)
+        if 0x0600<=o<=0x06ff or 0x0750<=o<=0x077f or 0x08a0<=o<=0x08ff:
+            arab+=1
+        elif ("A"<=ch<="Z") or ("a"<=ch<="z"):
+            latin+=1
+    return arab>=4 and arab>latin*2
+
+def source_label(name):
+    return {"baalwi":"BaAlwi","khulasah":"Al-Khulasah"}.get(name,name.replace("_"," ").title())
+
+def load_sqlite_title_map(root):
+    out={}
+    dbs=[p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".db",".sqlite",".sqlite3"}]
+    print("[title-db] found",len(dbs),"database files")
+    title_names=["title","judul","book_title","booktitle","name","book_name","kitab","kitab_name"]
+    file_tokens=["file","filename","path","pdf","asset","url","book_file"]
+    id_tokens=["id","book_id","bookid","no","number","nomor"]
+    for db in dbs:
+        try:
+            conn=sqlite3.connect("file:"+str(db)+"?mode=ro",uri=True)
+            tables=[r[0] for r in conn.execute("select name from sqlite_master where type='table'")]
+            for table in tables:
+                try:
+                    info=list(conn.execute('pragma table_info("'+table.replace('"','""')+'")'))
+                except Exception:
+                    continue
+                cols=[r[1] for r in info]
+                lowers=[x.lower() for x in cols]
+                tcol=None
+                for wanted in title_names:
+                    if wanted in lowers:
+                        tcol=cols[lowers.index(wanted)];break
+                if not tcol:
+                    for col in cols:
+                        low=col.lower()
+                        if "title" in low or "judul" in low or ("name" in low and "file" not in low):
+                            tcol=col;break
+                if not tcol:
+                    continue
+                fcol=None
+                for col in cols:
+                    low=col.lower()
+                    if any(tok==low or tok in low for tok in file_tokens):
+                        fcol=col;break
+                icol=None
+                for col in cols:
+                    low=col.lower()
+                    if low in id_tokens or low.endswith("_id"):
+                        icol=col;break
+                selected=[tcol]+([fcol] if fcol and fcol!=tcol else [])+([icol] if icol and icol not in {tcol,fcol} else [])
+                q='select '+','.join('"'+x.replace('"','""')+'"' for x in selected)+' from "'+table.replace('"','""')+'" limit 20000'
+                try:
+                    rows=conn.execute(q)
+                except Exception:
+                    continue
+                for row in rows:
+                    title=normalize_title_text(row[0])
+                    if not title_is_clear(title):
+                        continue
+                    vals=list(row[1:])
+                    keys=[]
+                    for v in vals:
+                        if v is None: continue
+                        sv=str(v).strip()
+                        if not sv: continue
+                        keys += [sv.lower(),Path(sv).name.lower(),Path(sv).stem.lower()]
+                        m=re.search(r"\d+",sv)
+                        if m:
+                            n=str(int(m.group()))
+                            keys += [n,n.zfill(2),n.zfill(3),n.zfill(4)]
+                    for k in keys:
+                        if k and k not in out:
+                            out[k]=title
+            conn.close()
+        except Exception as e:
+            print("[title-db-warn]",db,e)
+    print("[title-db] mapped keys",len(out))
+    return out
+
+def mapped_title_for_file(path,title_map):
+    stem=path.stem.lower()
+    base=re.sub(r"_(?:en|in|id|ar)$","",stem)
+    keys=[path.name.lower(),stem,base]
+    m=re.match(r"0*(\d+)",base)
+    if m:
+        n=str(int(m.group(1)))
+        keys += [n,n.zfill(2),n.zfill(3),n.zfill(4)]
+    for k in keys:
+        t=title_map.get(k)
+        if t and title_is_clear(t):
+            return normalize_title_text(t)
+    return ""
+
+def final_display_title(raw, source, seq):
+    t=normalize_title_text(raw)
+    # Do not expose unreadable OCR/file-code/foreign-only titles in the UI.
+    if not title_is_clear(t) or mostly_arabic(t):
+        return "Kitab "+source_label(source)+" Bagian "+str(seq)
+    return t
+
 def pdf_title(path, fallback):
     stem=slug(fallback,120)
     try:
@@ -197,22 +342,47 @@ def collect(name, root):
     usedp={}; useda={}
     pdfs=[]; audios=[]; htmls=[]
     files=[p for p in root.rglob("*") if p.is_file()]
+    title_map=load_sqlite_title_map(root)
     print("[scan]",name,len(files),"files")
+    seq=0
     for p in files:
         ext=p.suffix.lower()
         if ext==".pdf":
+            seq+=1
             rel=copy_unique(p,base/"pdf",usedp)
-            title=pdf_title(p,p.stem)
+            mapped=mapped_title_for_file(p,title_map)
+            raw_title=mapped or pdf_title(p,p.stem)
+            title=final_display_title(raw_title,name,seq)
             lang=""
             low=p.stem.lower()
             if low.endswith("_in") or low.endswith("_id"): lang="Indonesia"
             elif low.endswith("_en"): lang="English"
-            pdfs.append({"title":title,"path":"library/%s/pdf/%s"%(name,rel),"source":name,"type":"pdf","sourcePath":str(p.relative_to(root))[:300],"lang":lang})
+            elif low.endswith("_ar"): lang="Arab"
+            pdfs.append({
+                "title":title,
+                "rawTitle":normalize_title_text(raw_title),
+                "path":"library/%s/pdf/%s"%(name,rel),
+                "source":name,
+                "type":"pdf",
+                "sourcePath":str(p.relative_to(root))[:300],
+                "lang":lang,
+                "hidden": bool(lang=="English")
+            })
         elif ext in AUDIO_EXT:
             rel=copy_unique(p,base/"audio",useda)
             audios.append({"title":slug(p.stem,120),"path":"library/%s/audio/%s"%(name,rel),"source":name,"type":"audio","sourcePath":str(p.relative_to(root))[:300]})
-    pdfs.sort(key=lambda x:x["title"].lower()); audios.sort(key=lambda x:x["title"].lower()); htmls.sort(key=lambda x:x["title"].lower())
-    print("[catalog]",name,len(pdfs),"PDF",len(audios),"audio",len(htmls),"HTML")
+    pdfs.sort(key=lambda x:x["title"].lower())
+    audios.sort(key=lambda x:x["title"].lower())
+    htmls.sort(key=lambda x:x["title"].lower())
+
+    visible=[e for e in pdfs if not e.get("hidden")]
+    bad=[e for e in visible if not title_is_clear(e["title"]) or any(x in e["title"] for x in ["�","Ã","Â","â€"])]
+    generic=[e for e in visible if e["title"].startswith("Kitab "+source_label(name)+" Bagian ")]
+    print("[title-audit]",name,"visible",len(visible),"hidden-English",len(pdfs)-len(visible),"generic",len(generic),"bad",len(bad))
+    if bad:
+        print("[title-audit-bad]",[(e["title"],e.get("rawTitle","")) for e in bad[:25]])
+        raise RuntimeError("Unreadable visible titles remain in "+name)
+
     return {"pdfs":pdfs,"audios":audios,"html":htmls}
 
 def collect_rawi_complete(root):
@@ -423,6 +593,17 @@ def main():
         json.dumps(catalog,ensure_ascii=False,separators=(",",":")),
         encoding="utf-8"
     )
+    audit={}
+    for src in ["baalwi","khulasah"]:
+        entries=catalog["sources"][src]["pdfs"]
+        audit[src]={
+            "total":len(entries),
+            "visible":sum(1 for e in entries if not e.get("hidden")),
+            "hiddenEnglish":sum(1 for e in entries if e.get("hidden")),
+            "generic":sum(1 for e in entries if e["title"].startswith("Kitab "+source_label(src)+" Bagian ")),
+            "titles":[e["title"] for e in entries if not e.get("hidden")]
+        }
+    (ASSETS/"title_audit.json").write_text(json.dumps(audit,ensure_ascii=False,indent=2),encoding="utf-8")
 
     totalpdf=sum(len(v["pdfs"]) for v in catalog["sources"].values())
     totalaudio=sum(len(v["audios"]) for v in catalog["sources"].values())

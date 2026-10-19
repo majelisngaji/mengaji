@@ -365,7 +365,7 @@ def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
-    catalog={"version":"2.0.4","offline":True,"sources":{}}
+    catalog={"version":"2.1.0","offline":True,"sources":{}}
     for name,cfg in SOURCES.items():
         arc=WORK/(name+".zip")
         download(name,cfg,arc)
@@ -411,6 +411,14 @@ def main():
 
     for f in ["index.html","style.css","app.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
+
+    # Reuse the app's own local logo inside the offline WebView.
+    brand_dir=ASSETS/"brand"
+    brand_dir.mkdir(parents=True,exist_ok=True)
+    logo_src=ROOT/"app"/"icon-source.webp"
+    if not logo_src.exists():
+        raise RuntimeError("Majelis Mengaji logo asset missing")
+    shutil.copy2(logo_src,brand_dir/"logo.webp")
     (ASSETS/"catalog.json").write_text(
         json.dumps(catalog,ensure_ascii=False,separators=(",",":")),
         encoding="utf-8"
@@ -431,6 +439,8 @@ def main():
         raise RuntimeError("Quran incomplete")
     if not (ASSETS/"index.html").exists() or not (ASSETS/"catalog.json").exists():
         raise RuntimeError("Offline UI missing")
+    if not (ASSETS/"brand"/"logo.webp").exists():
+        raise RuntimeError("Brand logo missing")
 
 if __name__=="__main__":
     main()

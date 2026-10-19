@@ -40,17 +40,33 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Validate final mockup UI
+      - name: Validate UI, titles, back and reader
         run: |
           node --check app/src/main/assets/app.js
-          grep -q 'class="mn-topbar"' app/src/main/assets/index.html
-          grep -q 'id="topSearch"' app/src/main/assets/index.html
-          grep -q '.mn-hero{' app/src/main/assets/style.css
-          grep -q '.mn-quick-cards{' app/src/main/assets/style.css
-          grep -q '.mn-menu-grid{display:grid;grid-template-columns:repeat(2' app/src/main/assets/style.css
-          grep -q '.mn-bottom-nav{position:fixed' app/src/main/assets/style.css
-          grep -q 'brand/logo.webp' app/src/main/assets/index.html
-          test -f app/src/main/assets/brand/logo.webp
+          test -f app/src/main/assets/title_audit.json
+          grep -q 'window.handleNativeBack' app/src/main/assets/app.js
+          grep -q 'evaluateJavascript' app/src/main/java/com/mrobbie/majelismengaji/MainActivity.java
+          grep -q 'mn-force-reader-style' app/src/main/assets/app.js
+          grep -q 'overflow-x:hidden!important' app/src/main/assets/app.js
+          grep -q 'visibleEntries' app/src/main/assets/app.js
+          python - <<'PY'
+          import json,re,sys
+          p='app/src/main/assets/title_audit.json'
+          d=json.load(open(p,encoding='utf-8'))
+          bad=[]
+          for src,v in d.items():
+              for t in v.get('titles',[]):
+                  if any(x in t for x in ['�','Ã','Â','â€','http://','https://','www.']):
+                      bad.append((src,t))
+                  if re.fullmatch(r'\s*\d{1,4}(?:[_ -](?:en|in|id|ar))?\s*',t,re.I):
+                      bad.append((src,t))
+                  if len(t.strip())<3 or len(t)>95:
+                      bad.append((src,t))
+          print('TITLE AUDIT:', {k:{x:v[x] for x in ['total','visible','hiddenEnglish','generic']} for k,v in d.items()})
+          if bad:
+              print('BAD TITLES:',bad[:50])
+              sys.exit(1)
+          PY
           for bad in "Bacaan Offline" "Koleksi Offline" "Koleksi Bacaan" "tanpa API" "tersimpan di APK" ">Buka<" ">Baca<"; do
             if grep -qi "$bad" app/src/main/assets/index.html app/src/main/assets/app.js; then
               echo "ERROR: unwanted UI text remains: $bad"
@@ -61,28 +77,26 @@ jobs:
             echo "ERROR: horizontal scrolling must not exist"
             exit 1
           fi
-          grep -q 'class="mn-row"' app/src/main/assets/app.js
-          grep -q 'class="mn-pdf-pages"' app/src/main/assets/app.js
 
-      - name: Render real home preview
+      - name: Render real previews
         run: |
           python3 -m http.server 8080 --directory app/src/main/assets > /tmp/majelis-preview.log 2>&1 &
           SERVER_PID=$!
           sleep 2
           CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           if [ -z "$CHROME_BIN" ]; then
-            echo "ERROR: Chrome/Chromium not available for real preview"
+            echo "ERROR: Chrome/Chromium not available"
             kill $SERVER_PID || true
             exit 1
           fi
-          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars \
-            --window-size=430,932 --force-device-scale-factor=1 \
-            --virtual-time-budget=8000 \
-            --screenshot=Majelis_Mengaji_v2.3.0_PREVIEW.png \
-            http://127.0.0.1:8080/index.html
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,932 --force-device-scale-factor=1             --virtual-time-budget=8000             --screenshot=Majelis_Mengaji_v2.4.0_HOME.png             http://127.0.0.1:8080/index.html
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Majelis_Mengaji_v2.4.0_SIMTUD.png             "http://127.0.0.1:8080/index.html?preview=simtud"
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Majelis_Mengaji_v2.4.0_BAALWI.png             "http://127.0.0.1:8080/index.html?preview=baalwi"
           kill $SERVER_PID || true
-          test -s Majelis_Mengaji_v2.3.0_PREVIEW.png
-          ls -lh Majelis_Mengaji_v2.3.0_PREVIEW.png
+          test -s Majelis_Mengaji_v2.4.0_HOME.png
+          test -s Majelis_Mengaji_v2.4.0_SIMTUD.png
+          test -s Majelis_Mengaji_v2.4.0_BAALWI.png
+          ls -lh Majelis_Mengaji_v2.4.0_*.png
 
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -103,20 +117,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.3.0.apk
-          gh release delete offline-v2.3.0 -y --cleanup-tag || true
-          gh release create offline-v2.3.0 Majelis_Mengaji_OFFLINE_v2.3.0.apk Majelis_Mengaji_v2.3.0_PREVIEW.png \
+          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.4.0.apk
+          gh release delete offline-v2.4.0 -y --cleanup-tag || true
+          cp app/src/main/assets/title_audit.json Majelis_Mengaji_v2.4.0_TITLE_AUDIT.json
+          gh release create offline-v2.4.0 Majelis_Mengaji_OFFLINE_v2.4.0.apk Majelis_Mengaji_v2.4.0_HOME.png Majelis_Mengaji_v2.4.0_SIMTUD.png Majelis_Mengaji_v2.4.0_BAALWI.png Majelis_Mengaji_v2.4.0_TITLE_AUDIT.json \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.3.0" \
-            --notes "v2.3.0 dibangun dari UI mockup final. Release menyertakan screenshot preview nyata yang dirender dari source aplikasi yang sama."
+            --title "Majelis Mengaji OFFLINE v2.4.0" \
+            --notes "v2.4.0: tombol Back diperbaiki agar tidak menutup aplikasi, reader Rawindroid dipaksa responsif agar teks tidak terpotong, dan seluruh judul katalog diaudit/dibersihkan. Release menyertakan preview HOME, SIMTUD, BAALWI dan laporan audit judul."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.3.0
+          name: Majelis-Mengaji-OFFLINE-v2.4.0
           path: |
             app/build/outputs/apk/debug/app-debug.apk
-            Majelis_Mengaji_v2.3.0_PREVIEW.png
+            Majelis_Mengaji_v2.4.0_HOME.png
+            Majelis_Mengaji_v2.4.0_SIMTUD.png
+            Majelis_Mengaji_v2.4.0_BAALWI.png
+            app/src/main/assets/title_audit.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 30

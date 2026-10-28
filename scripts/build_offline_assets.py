@@ -765,7 +765,7 @@ def main():
     shutil.rmtree(ASSETS,ignore_errors=True); ASSETS.mkdir(parents=True,exist_ok=True)
     shutil.rmtree(WORK,ignore_errors=True); WORK.mkdir(parents=True,exist_ok=True)
     vendor(); quran()
-    catalog={"version":"2.5.0","offline":True,"sources":{}}
+    catalog={"version":"2.6.0","offline":True,"sources":{}}
     for name,cfg in SOURCES.items():
         arc=WORK/(name+".zip")
         download(name,cfg,arc)
@@ -809,7 +809,7 @@ def main():
     alias_count=len(raw_html)
     print("[rawindroid-exact]",[(e["title"],e["path"]) for e in raw_html])
 
-    for f in ["index.html","style.css","app.js"]:
+    for f in ["index.html","style.css","app.js","home-patch.js"]:
         shutil.copy2(WEBTPL/f,ASSETS/f)
 
     # Reuse the app's own local logo inside the offline WebView.

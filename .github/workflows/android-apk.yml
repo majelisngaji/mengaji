@@ -28,9 +28,19 @@ jobs:
 
       - name: Prepare fully offline content
         run: |
-          python -m pip install --quiet pillow requests pypdf
+          python -m pip install --quiet pillow requests pypdf cairosvg
+          python - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image
+          src=Path("scripts/offline_web/anwarul-logo.svg")
+          png=Path("/tmp/anwarul-logo.png")
+          cairosvg.svg2png(url=str(src),write_to=str(png),output_width=1024,output_height=1024)
+          Image.open(png).convert("RGB").save("app/icon-source.webp","WEBP",quality=96,method=6)
+          PY
           python scripts/generate_launcher_icons.py
           python scripts/build_offline_assets.py
+          sed -i 's/android:label="Majelis Mengaji"/android:label="Anwarul Habib"/' app/src/main/AndroidManifest.xml
           echo "Offline assets:"
           du -sh app/src/main/assets
           find app/src/main/assets -type f | wc -l
@@ -89,14 +99,14 @@ jobs:
             kill $SERVER_PID || true
             exit 1
           fi
-          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,932 --force-device-scale-factor=1             --virtual-time-budget=8000             --screenshot=Majelis_Mengaji_v2.4.0_HOME.png             http://127.0.0.1:8080/index.html
-          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Majelis_Mengaji_v2.4.0_SIMTUD.png             "http://127.0.0.1:8080/index.html?preview=simtud"
-          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Majelis_Mengaji_v2.4.0_BAALWI.png             "http://127.0.0.1:8080/index.html?preview=baalwi"
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1900 --force-device-scale-factor=1             --virtual-time-budget=8000             --screenshot=Anwarul_Habib_v2.5.0_HOME.png             http://127.0.0.1:8080/index.html
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Anwarul_Habib_v2.5.0_SIMTUD.png             "http://127.0.0.1:8080/index.html?preview=simtud"
+          "$CHROME_BIN" --headless --no-sandbox --disable-gpu --hide-scrollbars             --window-size=430,1600 --force-device-scale-factor=1             --virtual-time-budget=10000             --screenshot=Anwarul_Habib_v2.5.0_BAALWI.png             "http://127.0.0.1:8080/index.html?preview=baalwi"
           kill $SERVER_PID || true
-          test -s Majelis_Mengaji_v2.4.0_HOME.png
-          test -s Majelis_Mengaji_v2.4.0_SIMTUD.png
-          test -s Majelis_Mengaji_v2.4.0_BAALWI.png
-          ls -lh Majelis_Mengaji_v2.4.0_*.png
+          test -s Anwarul_Habib_v2.5.0_HOME.png
+          test -s Anwarul_Habib_v2.5.0_SIMTUD.png
+          test -s Anwarul_Habib_v2.5.0_BAALWI.png
+          ls -lh Anwarul_Habib_v2.5.0_*.png
 
       - name: Build signed debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -117,23 +127,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Majelis_Mengaji_OFFLINE_v2.4.0.apk
-          gh release delete offline-v2.4.0 -y --cleanup-tag || true
-          cp app/src/main/assets/title_audit.json Majelis_Mengaji_v2.4.0_TITLE_AUDIT.json
-          gh release create offline-v2.4.0 Majelis_Mengaji_OFFLINE_v2.4.0.apk Majelis_Mengaji_v2.4.0_HOME.png Majelis_Mengaji_v2.4.0_SIMTUD.png Majelis_Mengaji_v2.4.0_BAALWI.png Majelis_Mengaji_v2.4.0_TITLE_AUDIT.json \
+          cp app/build/outputs/apk/debug/app-debug.apk Anwarul_Habib_OFFLINE_v2.5.0.apk
+          gh release delete offline-v2.5.0 -y --cleanup-tag || true
+          cp app/src/main/assets/title_audit.json Anwarul_Habib_v2.5.0_TITLE_AUDIT.json
+          gh release create offline-v2.5.0 Anwarul_Habib_OFFLINE_v2.5.0.apk Anwarul_Habib_v2.5.0_HOME.png Anwarul_Habib_v2.5.0_SIMTUD.png Anwarul_Habib_v2.5.0_BAALWI.png Anwarul_Habib_v2.5.0_TITLE_AUDIT.json \
             --target "${GITHUB_SHA}" \
-            --title "Majelis Mengaji OFFLINE v2.4.0" \
-            --notes "v2.4.0: tombol Back diperbaiki agar tidak menutup aplikasi, reader Rawindroid dipaksa responsif agar teks tidak terpotong, dan seluruh judul katalog diaudit/dibersihkan. Release menyertakan preview HOME, SIMTUD, BAALWI dan laporan audit judul."
+            --title "Anwarul Habib v2.5.0" \
+            --notes "v2.5.0: beranda dibuat mengikuti mockup final Anwarul Habib, logo/ikon diganti ke branding Anwarul Habib, sementara fungsi bacaan v2.4.0 tetap dipertahankan."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Majelis-Mengaji-OFFLINE-v2.4.0
+          name: Anwarul-Habib-OFFLINE-v2.5.0
           path: |
             app/build/outputs/apk/debug/app-debug.apk
-            Majelis_Mengaji_v2.4.0_HOME.png
-            Majelis_Mengaji_v2.4.0_SIMTUD.png
-            Majelis_Mengaji_v2.4.0_BAALWI.png
+            Anwarul_Habib_v2.5.0_HOME.png
+            Anwarul_Habib_v2.5.0_SIMTUD.png
+            Anwarul_Habib_v2.5.0_BAALWI.png
             app/src/main/assets/title_audit.json
           if-no-files-found: error
           compression-level: 0

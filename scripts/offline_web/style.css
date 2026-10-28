@@ -235,3 +235,226 @@ linear-gradient(150deg,rgba(221,188,78,.05) 1px,transparent 1px);background-size
   .mn-menu-icon{width:54px;height:54px}
   .mn-menu-card h3{font-size:15.5px}
 }
+
+
+/* EXACT ANWARUL HABIB HOME MOCKUP */
+body:has(.mn-hero) .mn-topbar{display:none}
+body:has(.mn-hero){padding-bottom:96px;background:#f5efdf}
+body:has(.mn-hero) .mn-shell{background:#f5efdf}
+body:has(.mn-hero) .mn-page{padding:0 14px 24px}
+
+body:has(.mn-hero) .mn-hero{
+  height:560px;
+  margin:0 -14px;
+  border-radius:0 0 54px 54px;
+  background:
+    radial-gradient(circle at 50% 20%,rgba(255,255,255,.72),transparent 26%),
+    radial-gradient(circle at 20% 22%,rgba(246,226,171,.7),transparent 22%),
+    radial-gradient(circle at 80% 22%,rgba(246,226,171,.7),transparent 22%),
+    linear-gradient(180deg,#f6e8b8 0%,#f6eed8 40%,#d8e1c4 68%,#0b694a 100%);
+  border:0;
+  box-shadow:none;
+  overflow:hidden;
+}
+body:has(.mn-hero) .mn-hero:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    radial-gradient(circle at 7% 82%,#0a5d42 0 9%,transparent 10%),
+    radial-gradient(circle at 14% 86%,#0b7653 0 10%,transparent 11%),
+    radial-gradient(circle at 91% 82%,#0a5d42 0 10%,transparent 11%),
+    radial-gradient(circle at 84% 88%,#0b7653 0 11%,transparent 12%),
+    linear-gradient(90deg,rgba(0,0,0,0) 49%,rgba(255,255,255,.16) 50%,rgba(0,0,0,0) 51%);
+}
+body:has(.mn-hero) .mn-hero:after{
+  content:"";
+  position:absolute;
+  left:50%;top:28px;
+  width:190px;height:190px;
+  transform:translateX(-50%);
+  background:url('/brand/logo.webp') center/contain no-repeat;
+  z-index:8;
+  filter:drop-shadow(0 7px 10px rgba(0,0,0,.18));
+}
+body:has(.mn-hero) .mn-hero-art{
+  width:92%;
+  right:50%;
+  bottom:0;
+  transform:translateX(50%);
+  opacity:.92;
+  z-index:2;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.18));
+}
+body:has(.mn-hero) .mn-hero-copy{
+  left:0;right:0;top:242px;
+  text-align:center;
+  z-index:9;
+}
+body:has(.mn-hero) .mn-hero h1{
+  margin:0;
+  font-size:0;
+  color:transparent;
+}
+body:has(.mn-hero) .mn-hero h1:after{
+  content:"Anwarul Habib";
+  display:block;
+  color:#0a5a40;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:48px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:-1px;
+  text-shadow:0 2px 0 rgba(255,255,255,.7);
+}
+body:has(.mn-hero) .mn-hero-copy:after{
+  content:"Bersama Al-Qur’an, Maulid dan Dzikir\A Menuju Ridha Allah";
+  white-space:pre;
+  display:block;
+  color:#1b483a;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:18px;
+  line-height:1.32;
+  margin-top:14px;
+}
+body:has(.mn-hero) .mn-hero-copy:before{
+  content:"✥";
+  position:absolute;
+  left:0;right:0;top:118px;
+  color:#d0a83d;
+  font-size:28px;
+}
+
+body:has(.mn-hero) .mn-quick-cards{
+  position:relative;
+  z-index:12;
+  margin:-112px 8px 28px;
+  gap:10px;
+}
+body:has(.mn-hero) .mn-quick-card{
+  min-height:195px;
+  padding:18px 10px 16px;
+  border-radius:30px;
+  border:1.5px solid #dbbd66;
+  background:linear-gradient(180deg,#fffdfa 0%,#f9f2e4 100%);
+  box-shadow:0 12px 26px rgba(61,61,42,.16);
+  color:#103b30;
+  position:relative;
+}
+body:has(.mn-hero) .mn-quick-icon{
+  width:112px;height:112px;
+  border-radius:24px;
+  background:linear-gradient(145deg,#0b6b4b,#084531);
+  color:#f0ce62;
+  border:2px solid #d9b34b;
+  box-shadow:inset 0 0 0 7px rgba(255,255,255,.05);
+}
+body:has(.mn-hero) .mn-quick-icon svg{
+  width:74px;height:74px;
+  stroke-width:1.5;
+}
+body:has(.mn-hero) .mn-quick-card span{
+  margin-top:4px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:20px;
+  font-weight:700;
+  line-height:1.05;
+}
+body:has(.mn-hero) .mn-quick-card:after{
+  content:"›";
+  width:38px;height:38px;
+  border-radius:50%;
+  display:grid;place-items:center;
+  margin-top:4px;
+  color:#fff;
+  background:#0b6d4c;
+  font-size:30px;
+  line-height:1;
+}
+
+body:has(.mn-hero) .mn-section-head{display:none}
+body:has(.mn-hero) .mn-menu-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:0 6px 18px;
+}
+body:has(.mn-hero) .mn-menu-card{
+  min-height:128px;
+  padding:14px 15px;
+  border-radius:26px;
+  grid-template-columns:70px minmax(0,1fr) 38px;
+  gap:12px;
+  background:linear-gradient(180deg,#fffefa,#faf3e6);
+  border:1px solid rgba(215,184,93,.34);
+  box-shadow:0 9px 22px rgba(59,64,54,.10);
+}
+body:has(.mn-hero) .mn-menu-icon{
+  width:70px;height:70px;
+  border-radius:24px;
+  background:linear-gradient(145deg,#0a6b4a,#07422f)!important;
+  color:#f0cb61!important;
+  border:2px solid #d8b248;
+  box-shadow:inset 0 0 0 6px rgba(255,255,255,.05);
+}
+body:has(.mn-hero) .mn-menu-icon svg{
+  width:42px;height:42px;
+  stroke-width:1.55;
+}
+body:has(.mn-hero) .mn-menu-card h3{
+  color:#153d31;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:21px;
+  line-height:1.12;
+  font-weight:700;
+}
+body:has(.mn-hero) .mn-card-chevron{
+  width:38px;height:38px;
+  border-radius:50%;
+  display:grid;place-items:center;
+  background:#f0eee4;
+  color:#0a5740;
+  font-size:31px;
+}
+
+body:has(.mn-hero) .mn-bottom-nav{
+  width:min(calc(100% - 28px),832px);
+  bottom:10px;
+  border-radius:34px;
+  padding:8px;
+  border:1px solid #e0d5b8;
+  background:rgba(255,253,247,.98);
+  box-shadow:0 10px 30px rgba(45,62,53,.18);
+}
+body:has(.mn-hero) .mn-nav{
+  min-height:70px;
+  margin:0 3px;
+  border-radius:26px;
+  color:#65665f;
+  font-size:12px;
+}
+body:has(.mn-hero) .mn-nav.active{
+  color:#fff;
+  background:linear-gradient(145deg,#0c754f,#07543c);
+  box-shadow:0 6px 15px rgba(5,83,57,.23);
+}
+body:has(.mn-hero) .mn-nav-ico{font-size:28px}
+
+@media(max-width:540px){
+  body:has(.mn-hero) .mn-hero{height:510px}
+  body:has(.mn-hero) .mn-hero:after{width:168px;height:168px;top:24px}
+  body:has(.mn-hero) .mn-hero-copy{top:220px}
+  body:has(.mn-hero) .mn-hero h1:after{font-size:42px}
+  body:has(.mn-hero) .mn-hero-copy:after{font-size:16px}
+  body:has(.mn-hero) .mn-quick-cards{margin:-100px 3px 24px;gap:8px}
+  body:has(.mn-hero) .mn-quick-card{min-height:174px;border-radius:24px}
+  body:has(.mn-hero) .mn-quick-icon{width:92px;height:92px}
+  body:has(.mn-hero) .mn-quick-icon svg{width:61px;height:61px}
+  body:has(.mn-hero) .mn-quick-card span{font-size:17px}
+  body:has(.mn-hero) .mn-menu-grid{gap:9px;margin-left:2px;margin-right:2px}
+  body:has(.mn-hero) .mn-menu-card{min-height:112px;padding:11px;grid-template-columns:58px minmax(0,1fr) 32px}
+  body:has(.mn-hero) .mn-menu-icon{width:58px;height:58px;border-radius:20px}
+  body:has(.mn-hero) .mn-menu-icon svg{width:35px;height:35px}
+  body:has(.mn-hero) .mn-menu-card h3{font-size:17px}
+  body:has(.mn-hero) .mn-card-chevron{width:32px;height:32px;font-size:27px}
+}
